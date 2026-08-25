@@ -19,7 +19,6 @@ export default defineConfig({
     clearMocks: true,
     globals: true,
     include: ["tests/**/*.test.ts"],
-    testNamePattern: "magic.chess",
     reporters: "verbose",
     hideSkippedTests: true,
   },
