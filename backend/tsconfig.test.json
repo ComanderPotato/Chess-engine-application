@@ -1,0 +1,26 @@
+// {
+// 	"$schema": "https://www.schemastore.org/tsconfig.json",
+// 	"extends": "./tsconfig.json",
+// 	"compilerOptions": {
+// 		"types": [
+// 			"vitest/globals",
+// 			"node"
+// 		],
+// 		"rootDir": "./src",
+// 		"baseUrl": ".", /* Specify the base directory to resolve non-relative module names. */
+// 		"paths": {
+// 			"models/*": [
+// 				"src/shared/db/models/*"
+// 			],
+// 			"@/*": [
+// 				"src/*"
+// 			]
+// 		},
+// 	},
+// 	"include": [
+// 		"src/**/*"
+// 	],
+// 	"exclude": [
+// 		"tests"
+// 	]
+// }
