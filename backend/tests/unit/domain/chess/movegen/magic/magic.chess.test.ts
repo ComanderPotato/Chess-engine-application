@@ -2,7 +2,11 @@ import { BISHOP_PIECE, ROOK_PIECE } from "#/fixtures/chess/piece.fixtures.js";
 import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
 import { assertMagic } from "#/helpers/bitboard.helpers.js";
 import { TEST_CATEGORIES } from "#/utils/test-constants.js";
-import { BOARD_SIZE, SQUARES } from "@/domain/chess/board/board.constants.js";
+import {
+  BOARD_MASK,
+  BOARD_SIZE,
+  SQUARES,
+} from "@/domain/chess/board/board.constants.js";
 import { printBitboard } from "@/domain/chess/debug/printer.chess.js";
 import * as TestAttackBlocker from "@/domain/chess/movegen/attack/attack.blocker.js";
 import * as TestAttackMask from "@/domain/chess/movegen/attack/attack.mask.js";
@@ -11,45 +15,88 @@ import * as TestBitUtil from "@/domain/chess/utils/bit.utils.js";
 import { computeIndex } from "@/domain/chess/utils/magic.utils.js";
 import { beforeAll, describe, expect, it } from "vitest";
 
+type MagicTestData = {
+  mask: bigint;
+  relevantBits: number[];
+  blockerConfigs: bigint[];
+  shift: number;
+  magic: bigint;
+  attacks: bigint[];
+};
 describe("magic.chess", () => {
   describe(TEST_CATEGORIES.COMPUTATION, () => {
     describe(TestMagicChess.findSlidingMagic.name, () => {
-      let diagonalMagic: bigint[];
-      let diagonalAttacks: bigint[][];
-      beforeAll(() => {
-        diagonalMagic = new Array(BOARD_SIZE);
-        diagonalAttacks = new Array(BOARD_SIZE);
-        for (const square of SQUARES) {
-          const diagonalMask =
-            TestAttackMask.generateDiagonalAttackMask(square);
-          const diagonalRelevantBits =
-            TestAttackBlocker.getRelevantBlockerSquares(diagonalMask);
-          const diagonalBlockerConfigs =
-            TestAttackBlocker.generateBlockerConfigs(diagonalRelevantBits);
-          const diagonalShift = BOARD_SIZE - diagonalRelevantBits.length;
-          const diagonalResults = TestMagicChess.findSlidingMagic(
-            square,
-            diagonalShift,
-            diagonalBlockerConfigs,
-            BISHOP_PIECE,
-          );
-
-          diagonalMagic[square] = diagonalResults.magicNumber;
-          diagonalAttacks[square] = diagonalResults.attackTable;
-        }
-      });
       describe("magic.diagonal", () => {
-        it("verifies no index is undefined for diagonal pieces", () => {
-          expect(diagonalAttacks.some((table) => table === undefined)).toBe(
-            false,
-          );
+        let diagonal: MagicTestData[];
+        // let diagonalMagic: bigint[];
+        // let diagonalAttacks: bigint[][];
+        beforeAll(() => {
+          diagonal = new Array(BOARD_SIZE);
+          for (const square of SQUARES) {
+            const mask = TestAttackMask.generateDiagonalAttackMask(square);
+            const relevantBits =
+              TestAttackBlocker.getRelevantBlockerSquares(mask);
+            const blockerConfigs =
+              TestAttackBlocker.generateBlockerConfigs(relevantBits);
+            const shift = BOARD_SIZE - relevantBits.length;
+            const results = TestMagicChess.findSlidingMagic(
+              square,
+              shift,
+              blockerConfigs,
+              BISHOP_PIECE,
+            );
+
+            diagonal[square] = {
+              mask,
+              relevantBits,
+              blockerConfigs,
+              shift,
+              magic: results.magicNumber,
+              attacks: results.attackTable,
+            };
+            // diagonalMagic[square] = results.magicNumber;
+            // diagonalAttacks[square] = results.attackTable;
+          }
+        });
+        it("verifies no index is undefined for diagonal pieces and it contains a valid bitboard", () => {
+          for (const data of diagonal) {
+            expect(data.attacks).not.toContain(undefined);
+            for (const attack of data.attacks) {
+              expect(attack & ~BOARD_MASK).toBe(0n);
+            }
+          }
+        });
+        it("verifies each diagonal blocker maps to a unique index", () => {
+          for (const square of SQUARES) {
+            // const mask = TestAttackMask.generateDiagonalAttackMask(square);
+            // const relevantBits =
+            //   TestAttackBlocker.getRelevantBlockerSquares(mask);
+            // const shift = BOARD_SIZE - relevantBits.length;
+            // const blockerConfigs =
+            //   TestAttackBlocker.generateBlockerConfigs(relevantBits);
+
+            const indices = new Set<number>();
+
+            for (const blocker of diagonal[square]!.blockerConfigs) {
+              indices.add(
+                computeIndex(
+                  blocker,
+                  diagonal[square]!.magic,
+                  diagonal[square]!.shift,
+                ),
+              );
+            }
+            expect(indices).toHaveLength(
+              diagonal[square]!.blockerConfigs.length,
+            );
+          }
         });
         it("verifies a diagonal piece on E4 and blocker config of C2, F3, C6 and G6 outputs the correct attack", () => {
           const square = COORD_SQUARE_MAP.E4;
-          const mask = TestAttackMask.generateDiagonalAttackMask(square);
-          const relevantBits =
-            TestAttackBlocker.getRelevantBlockerSquares(mask);
-          const shift = BOARD_SIZE - relevantBits.length;
+          // const mask = TestAttackMask.generateDiagonalAttackMask(square);
+          // const relevantBits =
+          //   TestAttackBlocker.getRelevantBlockerSquares(mask);
+          // const shift = BOARD_SIZE - relevantBits.length;
 
           const blocker =
             (1n << BigInt(COORD_SQUARE_MAP.C2)) |
@@ -58,15 +105,21 @@ describe("magic.chess", () => {
             (1n << BigInt(COORD_SQUARE_MAP.G6));
 
           const attack =
-            diagonalAttacks[square]![
-              computeIndex(blocker, diagonalMagic[square]!, shift)
+            diagonal[square]!.attacks![
+              computeIndex(
+                blocker,
+                diagonal[square]!.magic,
+                diagonal[square]!.shift,
+              )
             ]!;
 
-          printBitboard(mask, { title: "Test diagonal E4 mask" });
-          printBitboard(blocker, {
-            title: "Test diagonal C2, F3, C6, and G6 blocker",
-          });
-          printBitboard(attack, { title: "Attack" });
+          // printBitboard(diagonal[square]!.mask, {
+          //   title: "Test diagonal E4 mask",
+          // });
+          // printBitboard(blocker, {
+          //   title: "Test diagonal C2, F3, C6, and G6 blocker",
+          // });
+          // printBitboard(attack, { title: "Attack" });
           expect(TestBitUtil.isBitSet64(attack, COORD_SQUARE_MAP.D3)).toBe(
             true,
           );
@@ -112,17 +165,21 @@ describe("magic.chess", () => {
         });
         it("verifies the magic number maps blocker configuration to a diagonal attack for all squares", () => {
           for (const square of SQUARES) {
-            const mask = TestAttackMask.generateDiagonalAttackMask(square);
-            const relevantBits =
-              TestAttackBlocker.getRelevantBlockerSquares(mask);
-            const blockerConfigs =
-              TestAttackBlocker.generateBlockerConfigs(relevantBits);
-            const shift = BOARD_SIZE - relevantBits.length;
+            // const mask = TestAttackMask.generateDiagonalAttackMask(square);
+            // const relevantBits =
+            //   TestAttackBlocker.getRelevantBlockerSquares(mask);
+            // const blockerConfigs =
+            //   TestAttackBlocker.generateBlockerConfigs(relevantBits);
+            // const shift = BOARD_SIZE - relevantBits.length;
 
-            for (const blocker of blockerConfigs) {
+            for (const blocker of diagonal[square]!.blockerConfigs) {
               const attack =
-                diagonalAttacks[square]![
-                  computeIndex(blocker, diagonalMagic[square]!, shift)
+                diagonal[square]!.attacks[
+                  computeIndex(
+                    blocker,
+                    diagonal[square]!.magic,
+                    diagonal[square]!.shift,
+                  )
                 ]!;
 
               assertMagic(square, attack, "NE", blocker);
@@ -135,40 +192,65 @@ describe("magic.chess", () => {
       });
     });
     describe("magic.orthogonal", () => {
-      let orthogonalMagic: bigint[];
-      let orthogonalAttacks: bigint[][];
+      let orthogonal: MagicTestData[];
+      // let orthogonalMagic: bigint[];
+      // let orthogonalAttacks: bigint[][];
       beforeAll(() => {
-        orthogonalMagic = new Array(BOARD_SIZE);
-        orthogonalAttacks = new Array(BOARD_SIZE);
+        // orthogonalMagic = new Array(BOARD_SIZE);
+        // orthogonalAttacks = new Array(BOARD_SIZE);
+        orthogonal = new Array(BOARD_SIZE);
         for (const square of SQUARES) {
-          const orthogonalMask =
-            TestAttackMask.generateOrthogonalAttackMask(square);
-          const orthogonalRelevantBits =
-            TestAttackBlocker.getRelevantBlockerSquares(orthogonalMask);
-          const orthogonalBlockerConfigs =
-            TestAttackBlocker.generateBlockerConfigs(orthogonalRelevantBits);
-          const orthogonalShift = BOARD_SIZE - orthogonalRelevantBits.length;
-          const orthogonalResults = TestMagicChess.findSlidingMagic(
+          const mask = TestAttackMask.generateOrthogonalAttackMask(square);
+          const relevantBits =
+            TestAttackBlocker.getRelevantBlockerSquares(mask);
+          const blockerConfigs =
+            TestAttackBlocker.generateBlockerConfigs(relevantBits);
+          const shift = BOARD_SIZE - relevantBits.length;
+          const results = TestMagicChess.findSlidingMagic(
             square,
-            orthogonalShift,
-            orthogonalBlockerConfigs,
+            shift,
+            blockerConfigs,
             ROOK_PIECE,
           );
 
-          orthogonalMagic[square] = orthogonalResults.magicNumber;
-          orthogonalAttacks[square] = orthogonalResults.attackTable;
+          orthogonal[square] = {
+            mask,
+            relevantBits,
+            blockerConfigs,
+            shift,
+            magic: results.magicNumber,
+            attacks: results.attackTable,
+          };
         }
       });
-      it("verifies no index is undefined for orthogonal pieces", () => {
-        expect(orthogonalAttacks.some((table) => table === undefined)).toBe(
-          false,
-        );
+      it("verifies no index is undefined for orthogonal pieces and it contains a valid bitboard", () => {
+        for (const data of orthogonal) {
+          expect(data.attacks).not.toContain(undefined);
+          for (const attack of data.attacks) {
+            expect(attack & ~BOARD_MASK).toBe(0n);
+          }
+        }
+      });
+      it("verifies each orthogonal blocker maps to a unique index", () => {
+        for (const square of SQUARES) {
+          const indices = new Set<number>();
+
+          for (const blocker of orthogonal[square]!.blockerConfigs) {
+            indices.add(
+              computeIndex(
+                blocker,
+                orthogonal[square]!.magic,
+                orthogonal[square]!.shift,
+              ),
+            );
+          }
+          expect(indices).toHaveLength(
+            orthogonal[square]!.blockerConfigs.length,
+          );
+        }
       });
       it("verifies an orthogonal piece on E4 and blocker config of B4, G4, E6 and E3 outputs the correct attack", () => {
         const square = COORD_SQUARE_MAP.E4;
-        const mask = TestAttackMask.generateOrthogonalAttackMask(square);
-        const relevantBits = TestAttackBlocker.getRelevantBlockerSquares(mask);
-        const shift = BOARD_SIZE - relevantBits.length;
 
         const blocker =
           (1n << BigInt(COORD_SQUARE_MAP.B4)) |
@@ -177,15 +259,21 @@ describe("magic.chess", () => {
           (1n << BigInt(COORD_SQUARE_MAP.E3));
 
         const attack =
-          orthogonalAttacks[square]![
-            computeIndex(blocker, orthogonalMagic[square]!, shift)
+          orthogonal[square]!.attacks[
+            computeIndex(
+              blocker,
+              orthogonal[square]!.magic,
+              orthogonal[square]!.shift,
+            )
           ]!;
 
-        printBitboard(mask, { title: "Test orthgonal E4 mask" });
-        printBitboard(blocker, {
-          title: "Test diagonal B4, G4, E6, and E3 blocker",
-        });
-        printBitboard(attack, { title: "Attack" });
+        // printBitboard(orthogonal[square]!.mask, {
+        //   title: "Test orthgonal E4 mask",
+        // });
+        // printBitboard(blocker, {
+        //   title: "Test diagonal B4, G4, E6, and E3 blocker",
+        // });
+        // printBitboard(attack, { title: "Attack" });
         expect(TestBitUtil.isBitSet64(attack, COORD_SQUARE_MAP.C4)).toBe(true);
         expect(TestBitUtil.isBitSet64(attack, COORD_SQUARE_MAP.B4)).toBe(true);
         expect(TestBitUtil.isBitSet64(attack, COORD_SQUARE_MAP.A4)).toBe(false);
@@ -205,16 +293,14 @@ describe("magic.chess", () => {
       });
       it("verifies the magic number maps blocker configuration to a orthogonal attack for all squares", () => {
         for (const square of SQUARES) {
-          const mask = TestAttackMask.generateOrthogonalAttackMask(square);
-          const relevantBits =
-            TestAttackBlocker.getRelevantBlockerSquares(mask);
-          const blockerConfigs =
-            TestAttackBlocker.generateBlockerConfigs(relevantBits);
-          const shift = BOARD_SIZE - relevantBits.length;
-          for (const blocker of blockerConfigs) {
+          for (const blocker of orthogonal[square]!.blockerConfigs) {
             const attack =
-              orthogonalAttacks[square]![
-                computeIndex(blocker, orthogonalMagic[square]!, shift)
+              orthogonal[square]!.attacks[
+                computeIndex(
+                  blocker,
+                  orthogonal[square]!.magic,
+                  orthogonal[square]!.shift,
+                )
               ]!;
             assertMagic(square, attack, "N", blocker);
             assertMagic(square, attack, "E", blocker);
