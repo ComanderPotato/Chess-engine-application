@@ -13,97 +13,27 @@ export function findSlidingMagic(
 
   let magicNumber: bigint = MagicUtil.randomMagic();
 
-  const computedAttacks = new Array(blockerConfigs.length);
+  const computedAttacksCache = new Array(blockerConfigs.length);
 
   for (let blockerIndex = 0; blockerIndex < blockerConfigs.length; ) {
     const blockerMask = blockerConfigs[blockerIndex]!;
     const index = MagicUtil.computeIndex(blockerMask, magicNumber, shift);
-
-    if (computedAttacks[blockerIndex] === undefined) {
-      computedAttacks[blockerIndex] = walkSlidingRays(
+    if (computedAttacksCache[blockerIndex] === undefined) {
+      computedAttacksCache[blockerIndex] = walkSlidingRays(
         square,
         piece,
         blockerMask,
       );
     }
-    const attack = computedAttacks[blockerIndex];
-
-    if (attackTable[index] === undefined) {
-      attackTable[index] = attack;
-      blockerIndex++;
-    } else {
+    const attack = computedAttacksCache[blockerIndex]!;
+    if (attackTable[index] !== undefined && attackTable[index] !== attack) {
       magicNumber = MagicUtil.randomMagic();
       blockerIndex = 0;
       attackTable = new Array(blockerConfigs.length);
+    } else {
+      attackTable[index] = attack;
+      blockerIndex++;
     }
   }
   return { magicNumber, attackTable };
 }
-// export function findRookMagic(
-//   square: Square,
-//   shift: number,
-//   blockerConfigs: Bitboard[],
-// ): [Bitboard, Bitboard[]] {
-//   const size = 1 << (BOARD_SIZE - shift);
-//   let attackTable: Bitboard[] = new Array(size);
-//
-//   let blockerIndex = 0;
-//   let magic: bigint = MagicUtil.randomMagic();
-//   const computedAttacks = new Array(blockerConfigs.length);
-//
-//   for (; blockerIndex < blockerConfigs.length; blockerIndex++) {
-//     const blockerMask = blockerConfigs[blockerIndex]!;
-//     // const index = Number(
-//     //   ((blockerConfigs[blockerIndex]! * magic) & BOARD_MASK) >> BigInt(shift),
-//     // );
-//     const index = MagicUtil.computeIndex(blockerMask, magic, shift);
-//
-//     if (!computedAttacks[blockerIndex]) {
-//       computedAttacks[blockerIndex] = walkOrthogonalRays(square, blockerMask);
-//     }
-//     const attack = computedAttacks[blockerIndex];
-//
-//     if (!attackTable[index]) {
-//       attackTable[index] = attack;
-//     } else if (attackTable[index] !== attack) {
-//       magic = MagicUtil.randomMagic();
-//       blockerIndex = 0;
-//       attackTable = new Array(size);
-//     }
-//   }
-//   return [magic, attackTable];
-// }
-// export function findBishopMagic(
-//   square: Square,
-//   shift: number,
-//   blockerConfigs: Bitboard[],
-// ): [Bitboard, Bitboard[]] {
-//   const ATTACK_TABLE_SIZE = 1 << (BOARD_SIZE - shift);
-//   let attackTable: Bitboard[] = new Array(ATTACK_TABLE_SIZE);
-//
-//   let blockerIndex = 0;
-//
-//   let magic = MagicUtil.randomMagic();
-//
-//   const computedAttacks = new Array(blockerConfigs.length);
-//
-//   for (; blockerIndex < blockerConfigs.length; blockerIndex++) {
-//     const blockerMask = blockerConfigs[blockerIndex]!;
-//
-//     const index = MagicUtil.computeIndex(blockerMask, magic, shift);
-//
-//     if (!computedAttacks[blockerIndex]) {
-//       computedAttacks[blockerIndex] = walkDiagonalRays(square, blockerMask);
-//     }
-//     const attack = computedAttacks[blockerIndex];
-//
-//     if (!attackTable[index]) {
-//       attackTable[index] = attack;
-//     } else if (attackTable[index] !== attack) {
-//       magic = MagicUtil.randomMagic();
-//       blockerIndex = 0;
-//       attackTable = new Array(ATTACK_TABLE_SIZE);
-//     }
-//   }
-//   return [magic, attackTable];
-// }
