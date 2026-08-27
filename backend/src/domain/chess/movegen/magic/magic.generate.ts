@@ -1,5 +1,4 @@
 import { BOARD_SIZE, SQUARES } from "@/domain/chess/board/board.constants.js";
-import { Bitboard, Square } from "@/domain/chess/board/types.chess.js";
 import { Piece } from "@/domain/chess/piece/piece.types.js";
 import {
   getRelevantBlockerSquares,
@@ -8,53 +7,67 @@ import {
 import { generateSlidingAttackMask } from "../attack/attack.mask.js";
 import { findSlidingMagic } from "./magic.chess.js";
 import path from "path";
-import { PIECE_PROPERTIES } from "../../piece/piece.constants.js";
-import {
-  appendGenerated,
-  fileExists,
-  removeFile,
-} from "../../utils/file.utils.js";
+import { writeToFile } from "../../utils/file.utils.js";
+import { MagicOptions, MagicResponse, MagicData } from "./magic.types.js";
+import { formatGeneratedConstant } from "../../utils/codegen.utils.js";
 
-export function generateMagics(piece: Piece) {
-  const shifts: number[] = new Array(BOARD_SIZE);
-  const magics: Bitboard[] = new Array(BOARD_SIZE);
+import { hasDiagonalMovement } from "../../piece/piece.chess.js";
+
+export function composeMagicIdentifier(piece: Piece): string {
+  if (hasDiagonalMovement(piece)) {
+    return "diagonal";
+  } else {
+    return "orthogonal";
+  }
+}
+export function generateSlidingMagics(
+  piece: Piece,
+  options?: MagicOptions,
+): MagicResponse {
+  const identifier = composeMagicIdentifier(piece);
+
+  const data: MagicData = {
+    identifier,
+    fileName: `${identifier}.magic.ts`, // Maybe put in magic.utils
+    shifts: new Array(BOARD_SIZE),
+    magics: new Array(BOARD_SIZE),
+  };
   for (const square of SQUARES) {
     const mask = generateSlidingAttackMask(square, piece);
     const relevantBits = getRelevantBlockerSquares(mask);
-    const blockers = generateBlockerConfigs(relevantBits);
+    const blockersConfigs = generateBlockerConfigs(relevantBits);
 
-    shifts[square] = BOARD_SIZE - relevantBits.length;
+    const shift = BOARD_SIZE - relevantBits.length;
+
     const { magicNumber } = findSlidingMagic(
       square,
-      shifts[square],
-      blockers,
+      shift,
+      blockersConfigs,
       piece,
     );
-    magics[square] = magicNumber;
+
+    data.shifts[square] = shift;
+    data.magics[square] = magicNumber;
   }
-  return { shifts, magics };
+  if (options?.write) {
+    writeMagicData(data);
+  }
+  return {
+    magics: data.magics,
+    shifts: data.shifts,
+  };
 }
 
-function magicInit(remove: boolean) {
-  console.log("Create magics");
-  const dirName = path.resolve(import.meta.dirname);
-  const bishopFile = path.join(dirName, "bishop.magic.ts");
-  const rookFile = path.join(dirName, "rook.magic.ts");
-  if (remove) {
-    if (fileExists(bishopFile)) removeFile(bishopFile);
-
-    if (fileExists(rookFile)) removeFile(rookFile);
-  }
-
-  if (!fileExists(bishopFile)) {
-    const { shifts, magics } = generateMagics(PIECE_PROPERTIES.Diagonal);
-    appendGenerated(bishopFile, "BISHOP_SHIFTS_PRECOMPUTE", shifts);
-    appendGenerated(bishopFile, "BISHOP_MAGICS_PRECOMPUTE", magics);
-  }
-  if (!fileExists(rookFile)) {
-    const { shifts, magics } = generateMagics(PIECE_PROPERTIES.Orthogonal);
-    appendGenerated(rookFile, "ROOK_SHIFTS_PRECOMPUTE", shifts);
-    appendGenerated(rookFile, "ROOK_MAGICS_PRECOMPUTE", magics);
-  }
+function writeMagicData(data: MagicData): void {
+  const outputDirectory = path.resolve(import.meta.dirname);
+  const filePath = path.join(outputDirectory, `${data.identifier}.magic.ts`);
+  const magicConstant = formatGeneratedConstant(
+    `${data.identifier.toUpperCase()}_MAGICS_PRECOMPUTE`, // Maybe add function for magic.utls
+    data.magics,
+  );
+  const shiftConstant = formatGeneratedConstant(
+    `${data.identifier.toUpperCase()}_SHIFTS_PRECOMPUTE`,
+    data.shifts,
+  );
+  writeToFile(filePath, magicConstant.concat(shiftConstant));
 }
-// magicInit(true);
