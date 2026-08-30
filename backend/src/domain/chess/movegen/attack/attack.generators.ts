@@ -136,41 +136,41 @@ export function generateAttacks(board: Board, side: PieceColour): Bitboard {
   attacks |= generateKingAttacks(board, side);
   return attacks;
 }
-export function generateFriendlyAttacks(board: Board): Bitboard {
-  return generateAttacks(board, board.activeColour);
-}
-export function generateEnemyAttacks(board: Board): Bitboard {
-  const side = getEnemyColour(board.activeColour);
-  return generateAttacks(board, getEnemyColour(board.activeColour));
-}
+// export function generateFriendlyAttacks(board: Board): Bitboard {
+//   return generateAttacks(board, board.activeColour);
+// }
+// export function generateEnemyAttacks(board: Board): Bitboard {
+//   const side = getEnemyColour(board.activeColour);
+//   return generateAttacks(board, getEnemyColour(board.activeColour));
+// }
 
-function getCheckCountOnKing(board: Board, square: Square) {
-  let attacks = 0n;
-  attacks |=
-    KNIGHT_ATTACKS[board.getWhiteKingSquare()]! &
-    board.getBitboard(PIECE_TYPES.Knight | board.activeColour);
-
-  const diagonalAttacks = generateSlidingAttack(
-    board,
-    board.getWhiteKingSquare(),
-    DIAGONAL_TABLES,
-  );
-  const orthogonalAttacks = generateSlidingAttack(
-    board,
-    board.getWhiteKingSquare(),
-    ORTHOGONAL_TABLES,
-  );
-  attacks |=
-    diagonalAttacks &
-    board.getBitboard(PIECE_TYPES.Bishop | board.activeColour);
-
-  attacks |=
-    orthogonalAttacks &
-    board.getBitboard(PIECE_TYPES.Rook | board.activeColour);
-
-  attacks |=
-    (diagonalAttacks | orthogonalAttacks) &
-    board.getBitboard(PIECE_TYPES.Queen | board.activeColour);
-
-  return popCount(attacks);
-}
+// function getCheckCountOnKing(board: Board, square: Square) {
+//   let attacks = 0n;
+//   attacks |=
+//     KNIGHT_ATTACKS[board.getWhiteKingSquare()]! &
+//     board.getBitboard(PIECE_TYPES.Knight | board.activeColour);
+//
+//   const diagonalAttacks = generateSlidingAttack(
+//     board,
+//     board.getWhiteKingSquare(),
+//     DIAGONAL_TABLES,
+//   );
+//   const orthogonalAttacks = generateSlidingAttack(
+//     board,
+//     board.getWhiteKingSquare(),
+//     ORTHOGONAL_TABLES,
+//   );
+//   attacks |=
+//     diagonalAttacks &
+//     board.getBitboard(PIECE_TYPES.Bishop | board.activeColour);
+//
+//   attacks |=
+//     orthogonalAttacks &
+//     board.getBitboard(PIECE_TYPES.Rook | board.activeColour);
+//
+//   attacks |=
+//     (diagonalAttacks | orthogonalAttacks) &
+//     board.getBitboard(PIECE_TYPES.Queen | board.activeColour);
+//
+//   return popCount(attacks);
+// }

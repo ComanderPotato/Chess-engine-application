@@ -24,7 +24,6 @@ describe("attack.mask", () => {
       const mask = TestAttackMask.generateDiagonalAttackMask(
         COORD_SQUARE_MAP.A1,
       );
-      // printBitboard(mask);
       expect(isBitSet64(mask, COORD_SQUARE_MAP.B2)).toBe(true);
       expect(isBitSet64(mask, COORD_SQUARE_MAP.C3)).toBe(true);
       expect(isBitSet64(mask, COORD_SQUARE_MAP.D4)).toBe(true);

@@ -1,7 +1,6 @@
 import { BISHOP_PIECE } from "#/fixtures/chess/piece.fixtures.js";
 import { TEST_CATEGORIES } from "#/utils/test-constants.js";
 import { BOARD_SIZE, SQUARES } from "@/domain/chess/board/board.constants.js";
-import { printBitboard } from "@/domain/chess/debug/printer.chess.js";
 import * as TestAttackMask from "@/domain/chess/movegen/attack/attack.mask.js";
 import * as TestAttackPrecompute from "@/domain/chess/movegen/attack/attack.precompute.js";
 import {
@@ -73,7 +72,7 @@ describe("attack.precompute", () => {
       });
     });
     describe(TestAttackPrecompute.precomputeSlidingAttackTables.name, () => {
-      it.only("precomputes diagonal attack tables for every square", () => {
+      it("precomputes diagonal attack tables for every square", () => {
         const table = TestAttackPrecompute.precomputeSlidingAttackTables(
           TestAttackPrecompute.precomputeDiagonalAttackMasks(),
           BISHOP_SHIFTS_PRECOMPUTE,
