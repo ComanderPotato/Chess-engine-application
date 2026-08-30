@@ -9,31 +9,35 @@ export function findSlidingMagic(
   blockerConfigs: Bitboard[],
   piece: Piece,
 ): { magicNumber: bigint; attackTable: Bitboard[] } {
-  let attackTable: Bitboard[] = new Array(blockerConfigs.length);
+  const attacks = blockerConfigs.map((blockerConfig) =>
+    walkSlidingRays(square, piece, blockerConfig),
+  );
 
-  let magicNumber: bigint = MagicUtil.randomMagic();
+  while (true) {
+    const attackTable: Bitboard[] = new Array(blockerConfigs.length);
+    const magicNumber: bigint = MagicUtil.randomMagic();
 
-  const computedAttacksCache = new Array(blockerConfigs.length);
-
-  for (let blockerIndex = 0; blockerIndex < blockerConfigs.length; ) {
-    const blockerMask = blockerConfigs[blockerIndex]!;
-    const index = MagicUtil.computeIndex(blockerMask, magicNumber, shift);
-    if (computedAttacksCache[blockerIndex] === undefined) {
-      computedAttacksCache[blockerIndex] = walkSlidingRays(
-        square,
-        piece,
-        blockerMask,
+    let isValid = true;
+    for (
+      let blockerIndex = 0;
+      blockerIndex < blockerConfigs.length;
+      blockerIndex++
+    ) {
+      const index = MagicUtil.computeIndex(
+        blockerConfigs[blockerIndex]!,
+        magicNumber,
+        shift,
       );
-    }
-    const attack = computedAttacksCache[blockerIndex]!;
-    if (attackTable[index] !== undefined && attackTable[index] !== attack) {
-      magicNumber = MagicUtil.randomMagic();
-      blockerIndex = 0;
-      attackTable = new Array(blockerConfigs.length);
-    } else {
+      const attack = attacks[blockerIndex]!;
+      if (attackTable[index] !== undefined && attackTable[index] !== attack) {
+        isValid = false;
+        break;
+      }
       attackTable[index] = attack;
-      blockerIndex++;
+    }
+
+    if (isValid) {
+      return { magicNumber, attackTable };
     }
   }
-  return { magicNumber, attackTable };
 }
