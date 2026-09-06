@@ -1,24 +1,3 @@
 export type Bitpack = number;
 
 export type Move = number & { readonly __brand: "Move" };
-
-export const MOVE_FLAGS = {
-  Quiet: 0,
-  DoublePawnPush: 1,
-  KingCastle: 2,
-  QueenCastle: 3,
-  Capture: 4,
-  EnPassantCapture: 5,
-  KnightPromotion: 6,
-  BishopCapture: 7,
-  RookPromotion: 8,
-  QueenPromotion: 9,
-  KnightPromotionCapture: 10,
-  BishopCaptureCapture: 11,
-  RookPromotionCapture: 12,
-  QueenPromotionCapture: 13,
-  Promotion: 14,
-  PromotionCapture: 15,
-  Check: 16,
-} as const;
-export type MoveFlag = (typeof MOVE_FLAGS)[keyof typeof MOVE_FLAGS];
