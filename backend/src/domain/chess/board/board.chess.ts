@@ -1,67 +1,103 @@
 import { FENS } from "./fen.constants.js";
-import {
-  PIECE_COLOURS as PieceColourConstants,
-  PIECE_TYPES as PieceTypeConstants,
-} from "../piece/piece.constants.js";
+import { PIECE_COLOURS, PIECE_TYPES } from "../piece/piece.constants.js";
 import { Piece, PieceColour, PieceType } from "../piece/piece.types.js";
-import { BOARD_DIMENSION } from "./board.constants.js";
-import { Bit, Bitboard, ReadonlyBitboards, Square } from "./types.chess.js";
-import { isBitSet32, isBitSet64 } from "../utils/bit.utils.js";
-import { getLSBIndex, indexToPiece } from "../utils/bitboard.utils.js";
+import {
+  Bitboard,
+  CastlingRights,
+  EnPassant,
+  ReadonlyBitboards,
+  Square,
+} from "./types.chess.js";
 import { Bitboards } from "../bitboard/bitboard.chess.js";
 import { coordToSquare } from "../utils/coord.utils.js";
-import { isValidSquare, toSquare } from "../utils/square.utils.js";
+import { parseFen } from "../fen/fen.parser.js";
+import { composeFen } from "../fen/fen.composer.js";
+import { Move, MOVE_FLAGS } from "../movegen/move/move.types.js";
 
-// Board and basic operations
-//
+import { getColour, getType, isWhite } from "../piece/piece.chess.js";
+import * as BitUtils from "../utils/bit.utils.js";
+import * as BitboardUtils from "../utils/bitboard.utils.js";
+import * as SquareUtils from "../utils/square.utils.js";
+import * as MoveUtils from "../utils/move.utils.js";
 
-// enum CastlingRights {
-//   WhiteKingSide = 4,
-//   WhiteQueenSide = 3,
-//   BLackKingSide = 2,
-//   BLackQueenSide = 1,
-// }
-export type CastlingRights = number;
-export type EnPassant = Square | null;
 export class Board {
   private _bitboards: Bitboards = new Bitboards();
 
   // FEN
-  private _piecePlacement: string = FENS.START;
+  private _activeColour!: PieceColour;
 
-  private _activeColour: PieceColour = PieceColourConstants.White;
+  private _castlingRights!: CastlingRights;
 
-  private _castlingRights: CastlingRights = 0b1111;
+  private _enPassant!: EnPassant;
 
-  private _enPassant: EnPassant = null;
+  private _halfmoveClock!: number;
 
-  private _halfmoveClock: number = 0;
-
-  private _fullMoveClock: number = 1;
-
-  // private _whiteKingSquare: Square;
-  // private _blackKingSquare: Square;
-  constructor() {
-    // this._bitboards = new Bitboards();
+  private _fullMoveClock!: number;
+  constructor(fen: string = FENS.START) {
+    parseFen(fen, this);
   }
 
   public getWhiteKingSideCastlingRights() {
-    return isBitSet32(this._castlingRights, 4);
+    return BitUtils.isBitSet32(this._castlingRights, 4);
   }
   public getWhiteQueenSideCastlingRights() {
-    return isBitSet32(this._castlingRights, 3);
+    return BitUtils.isBitSet32(this._castlingRights, 3);
   }
   public getBlackKingSideCastlingRights() {
-    return isBitSet32(this._castlingRights, 2);
+    return BitUtils.isBitSet32(this._castlingRights, 2);
   }
   public getBlackQueenSideCastlingRights() {
-    return isBitSet32(this._castlingRights, 1);
+    return BitUtils.isBitSet32(this._castlingRights, 1);
   }
 
-  public set piecePlacement(value: Bitboards) {
+  // BITBOARD GETTERS/SETTERS
+  public get occupancy(): Bitboard {
+    return this._bitboards.allOccupancy;
+  }
+  public get friendlyOccupancy(): Bitboard {
+    return this._bitboards.getFriendlyOccupancyFor(this._activeColour);
+  }
+  public getFriendlyOccupancyFor(colour: PieceColour): Bitboard {
+    return this._bitboards.getFriendlyOccupancyFor(colour);
+  }
+  public getEnemyOccupancyFor(colour: PieceColour): Bitboard {
+    return this._bitboards.getEnemyOccupancyFor(colour);
+  }
+
+  public get enemyOccupancy(): Bitboard {
+    return this._bitboards.getEnemyOccupancyFor(this._activeColour);
+  }
+  public get whiteOccupancy(): Bitboard {
+    return this._bitboards.whiteOccupancy;
+  }
+  public get blackOccupancy(): Bitboard {
+    return this._bitboards.blackOccupancy;
+  }
+  public get whiteSlidingOccupancy(): Bitboard {
+    return this._bitboards.whiteSlidingOccupancy;
+  }
+  public get blackSlidingOccupancy(): Bitboard {
+    return this._bitboards.blackSlidingOccupancy;
+  }
+  public get bitboards(): Bitboards {
+    return this._bitboards;
+  }
+  public get bitboardsList(): ReadonlyBitboards {
+    return this._bitboards.bitboards;
+  }
+  public getOccupancy(type: PieceType): Bitboard {
+    return this._bitboards.getOccupancy(type);
+  }
+  public getBitboard(piece: Piece): Bitboard {
+    return this._bitboards.getBitboard(piece);
+  }
+  public setBitboards(value: Bitboards): void {
     this._bitboards = value;
   }
-
+  public setBitboard(piece: Piece, square: Square): void {
+    this._bitboards.setBit(piece, square);
+  }
+  // FEN GETTERS/SETTERS
   public set activeColour(value: PieceColour) {
     this._activeColour = value;
   }
@@ -100,65 +136,41 @@ export class Board {
   public get fullMoveClock(): number {
     return this._fullMoveClock;
   }
-  public toggleActiveColour(): void {
+
+  // FEN UPDATE OPERATIONS
+  private updatePiecePlacement(): void {}
+  private updateEnPassant(move: Move): void {
+    const fromSquare = MoveUtils.getFrom(move);
+    // Maybe just use active colour, however, relies on active colour not
+    // being updated yet...
+    const movedPieceColour = getColour(this.pieceAt(fromSquare));
+
+    const enPassantSquareOffset = isWhite(movedPieceColour) ? 8 : -8;
+    this.enPassant =
+      MoveUtils.getFlag(move) === MOVE_FLAGS.DoublePawnPush
+        ? SquareUtils.toSquare(fromSquare + enPassantSquareOffset)
+        : null;
+  }
+  private updateActiveColour(): void {
     this._activeColour =
-      this._activeColour === PieceColourConstants.White
-        ? PieceColourConstants.Black
-        : PieceColourConstants.White;
-  }
-  setState(state: string) {
-    this._piecePlacement = state;
+      this._activeColour === PIECE_COLOURS.White
+        ? PIECE_COLOURS.Black
+        : PIECE_COLOURS.White;
   }
 
-  public get occupancy(): Bitboard {
-    return this._bitboards.allOccupancy;
+  private updateHalfMoveClock(move: Move) {
+    const wasCapture = MoveUtils.getFlag(move) === MOVE_FLAGS.Capture;
+    const toSquare = MoveUtils.getTo(move);
+    const wasPawnMoved = getType(this.pieceAt(toSquare)) === PIECE_TYPES.Pawn;
+    this.halfMoveClock = wasCapture || wasPawnMoved ? 0 : this.halfMoveClock++;
   }
-  public get friendlyOccupancy(): Bitboard {
-    return this._bitboards.getFriendlyOccupancyFor(this._activeColour);
-  }
-  public getFriendlyOccupancyFor(colour: PieceColour): Bitboard {
-    return this._bitboards.getFriendlyOccupancyFor(colour);
-  }
-  public getEnemyOccupancyFor(colour: PieceColour): Bitboard {
-    return this._bitboards.getEnemyOccupancyFor(colour);
+  private updateFullMoveClock() {
+    this.fullMoveClock =
+      this.activeColour === PIECE_COLOURS.Black
+        ? this.fullMoveClock++
+        : this.fullMoveClock;
   }
 
-  public get enemyOccupancy(): Bitboard {
-    return this._bitboards.getEnemyOccupancyFor(this._activeColour);
-  }
-  public get whiteOccupancy(): Bitboard {
-    return this._bitboards.whiteOccupancy;
-  }
-  public get blackOccupancy(): Bitboard {
-    return this._bitboards.blackOccupancy;
-  }
-  public get whiteSlidingOccupancy(): Bitboard {
-    return this._bitboards.whiteSlidingOccupancy;
-  }
-  public get blackSlidingOccupancy(): Bitboard {
-    return this._bitboards.blackSlidingOccupancy;
-  }
-  public get bitboards(): Bitboards {
-    return this._bitboards;
-  }
-  // public set bitboards(value: Bitboards) {
-  //   this._bitboards = value;
-  // }
-  public get bitboardsList(): ReadonlyBitboards {
-    return this._bitboards.bitboards;
-  }
-  public getOccupancy(type: PieceType): Bitboard {
-    return this._bitboards.getOccupancy(type);
-  }
-  public getBitboard(piece: Piece): Bitboard {
-    return this._bitboards.getBitboard(piece);
-  }
-  public setBitboards(value: Bitboards): void {
-    this._bitboards = value;
-  }
-  public setBitboard(piece: Piece, square: Square): void {
-    this._bitboards.setBit(piece, square);
-  }
   public movePiece(piece: Piece, from: string, to: string) {
     const fromSquare = coordToSquare(from);
     const toSquare = coordToSquare(to);
@@ -166,22 +178,40 @@ export class Board {
   }
 
   private getKingSquare(colour: PieceColour): Square {
-    return toSquare(
-      getLSBIndex(this.getBitboard(PieceTypeConstants.King | colour))!,
+    return SquareUtils.toSquare(
+      BitboardUtils.getLSBIndex(this.getBitboard(PIECE_TYPES.King | colour))!,
     );
   }
   public getWhiteKingSquare(): Square {
-    return this.getKingSquare(PieceColourConstants.White);
+    return this.getKingSquare(PIECE_COLOURS.White);
   }
   public getBlackKingSquare(): Square {
-    return this.getKingSquare(PieceColourConstants.Black);
+    return this.getKingSquare(PIECE_COLOURS.Black);
   }
   public pieceAt(square: Square): Piece {
     for (let index = 0; index < this.bitboardsList.length; index++) {
-      if (isBitSet64(this.bitboardsList[index]!, square))
-        return indexToPiece(index);
+      if (BitUtils.isBitSet64(this.bitboardsList[index]!, square))
+        return BitboardUtils.indexToPiece(index);
     }
-    return PieceTypeConstants.Empty;
+    return PIECE_TYPES.Empty;
+  }
+  public updateBoardState(move: Move): void {
+    this.updateHalfMoveClock(move);
+    this.updateEnPassant(move);
+    this.updateFullMoveClock();
+    this.updateActiveColour();
+
+    this.updatePiecePlacement();
+  }
+
+  public toFen(): string {
+    return composeFen(this);
+  }
+  public loadFen(fen: string): void {
+    parseFen(fen, this);
+  }
+  public static fromFen(fen: string): Board {
+    return new Board(fen);
   }
   public move(from: string, to: string) {
     // const fromBitPosition = this.selectSquare(from);
