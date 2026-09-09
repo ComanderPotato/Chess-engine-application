@@ -190,6 +190,8 @@ export class Board {
     return this.getKingSquare(PIECE_COLOURS.Black);
   }
   public pieceAt(square: Square): Piece {
+    if (!BitUtils.isBitSet64(this.occupancy, square)) return PIECE_TYPES.Empty;
+    let piece: Piece | null = null;
     for (let index = 0; index < this.bitboardsList.length; index++) {
       if (BitUtils.isBitSet64(this.bitboardsList[index]!, square))
         return BitboardUtils.indexToPiece(index);
