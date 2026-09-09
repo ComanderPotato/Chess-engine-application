@@ -12,13 +12,14 @@ import { Bitboards } from "../bitboard/bitboard.chess.js";
 import { coordToSquare } from "../utils/coord.utils.js";
 import { parseFen } from "../fen/fen.parser.js";
 import { composeFen } from "../fen/fen.composer.js";
-import { Move, MOVE_FLAGS } from "../movegen/move/move.types.js";
+import { Move } from "../movegen/move/move.types.js";
 
 import { getColour, getType, isWhite } from "../piece/piece.chess.js";
+import * as MoveChess from "../movegen/move/move.chess.js";
 import * as BitUtils from "../utils/bit.utils.js";
 import * as BitboardUtils from "../utils/bitboard.utils.js";
 import * as SquareUtils from "../utils/square.utils.js";
-import * as MoveUtils from "../utils/move.utils.js";
+import { MOVE_FLAGS } from "../movegen/move/move.constants.js";
 
 export class Board {
   private _bitboards: Bitboards = new Bitboards();
@@ -140,14 +141,14 @@ export class Board {
   // FEN UPDATE OPERATIONS
   private updatePiecePlacement(): void {}
   private updateEnPassant(move: Move): void {
-    const fromSquare = MoveUtils.getFrom(move);
+    const fromSquare = MoveChess.getFrom(move);
     // Maybe just use active colour, however, relies on active colour not
     // being updated yet...
     const movedPieceColour = getColour(this.pieceAt(fromSquare));
 
     const enPassantSquareOffset = isWhite(movedPieceColour) ? 8 : -8;
     this.enPassant =
-      MoveUtils.getFlag(move) === MOVE_FLAGS.DoublePawnPush
+      MoveChess.getFlag(move) === MOVE_FLAGS.DoublePawnPush
         ? SquareUtils.toSquare(fromSquare + enPassantSquareOffset)
         : null;
   }
@@ -159,8 +160,8 @@ export class Board {
   }
 
   private updateHalfMoveClock(move: Move) {
-    const wasCapture = MoveUtils.getFlag(move) === MOVE_FLAGS.Capture;
-    const toSquare = MoveUtils.getTo(move);
+    const wasCapture = MoveChess.getFlag(move) === MOVE_FLAGS.Capture;
+    const toSquare = MoveChess.getTo(move);
     const wasPawnMoved = getType(this.pieceAt(toSquare)) === PIECE_TYPES.Pawn;
     this.halfMoveClock = wasCapture || wasPawnMoved ? 0 : this.halfMoveClock++;
   }
