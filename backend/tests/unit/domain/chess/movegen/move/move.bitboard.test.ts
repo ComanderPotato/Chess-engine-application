@@ -156,7 +156,45 @@ describe("move.bitboard", () => {
         }
       });
     });
-    describe(TestMoveBitboard.shiftRight.name, () => {});
-    describe(TestMoveBitboard.shiftLeft.name, () => {});
+    describe(TestMoveBitboard.shiftRight.name, () => {
+      it("shifts the first rank up 2 ranks and returns the third rank", () => {
+        const value = TestMoveBitboard.shiftRight(
+          RANK_MASKS[RANKS.FIRST]!,
+          2 * 8,
+        );
+        expect(value).toBe(RANK_MASKS[RANKS.THIRD]);
+      });
+      it("shifts the first rank up 7 ranks and returns the eighth rank", () => {
+        const value = TestMoveBitboard.shiftRight(
+          RANK_MASKS[RANKS.FIRST]!,
+          7 * 8,
+        );
+        expect(value).toBe(RANK_MASKS[RANKS.EIGHTH]);
+      });
+      it("returns an empty bitboard shifting past board limits", () => {
+        const value = TestMoveBitboard.shiftRight(RANK_MASKS[RANKS.EIGHTH]!, 8);
+        expect(value).toBe(0n);
+      });
+    });
+    describe(TestMoveBitboard.shiftLeft.name, () => {
+      it("shifts the eighth rank down 2 ranks and returns the sixth rank", () => {
+        const value = TestMoveBitboard.shiftLeft(
+          RANK_MASKS[RANKS.EIGHTH]!,
+          2 * 8,
+        );
+        expect(value).toBe(RANK_MASKS[RANKS.SIXTH]);
+      });
+      it("shifts the eighth rank down 7 ranks and returns the first rank", () => {
+        const value = TestMoveBitboard.shiftLeft(
+          RANK_MASKS[RANKS.EIGHTH]!,
+          7 * 8,
+        );
+        expect(value).toBe(RANK_MASKS[RANKS.FIRST]);
+      });
+      it("returns an empty bitboard shifting past board limits", () => {
+        const value = TestMoveBitboard.shiftLeft(RANK_MASKS[RANKS.FIRST]!, 8);
+        expect(value).toBe(0n);
+      });
+    });
   });
 });
