@@ -19,15 +19,28 @@ export const MOVE_FLAGS = {
   Capture: 4,
   EnPassantCapture: 5,
   KnightPromotion: 6,
-  BishopCapture: 7,
+  BishopPromotion: 7,
   RookPromotion: 8,
   QueenPromotion: 9,
   KnightPromotionCapture: 10,
-  BishopCaptureCapture: 11,
+  BishopPromotionCapture: 11,
   RookPromotionCapture: 12,
   QueenPromotionCapture: 13,
-  Promotion: 14,
-  PromotionCapture: 15,
-  Check: 16,
+  Check: 14, // Maybe don't need
 } as const;
+
+export const PROMOTION_FLAGS = [
+  MOVE_FLAGS.KnightPromotion,
+  MOVE_FLAGS.BishopPromotion,
+  MOVE_FLAGS.RookPromotion,
+  MOVE_FLAGS.QueenPromotion,
+] as const;
+
+export const PROMOTION_CAPTURE_FLAGS = [
+  MOVE_FLAGS.KnightPromotionCapture,
+  MOVE_FLAGS.BishopPromotionCapture,
+  MOVE_FLAGS.RookPromotionCapture,
+  MOVE_FLAGS.QueenPromotionCapture,
+] as const;
+
 export type MoveFlag = (typeof MOVE_FLAGS)[keyof typeof MOVE_FLAGS];
