@@ -54,4 +54,6 @@ export const TEST_CATEGORIES = {
   CREATION: "Creation",
 
   TURN: "Turn",
+
+  UNCATEGORISED: "Uncategorised",
 };
