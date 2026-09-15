@@ -96,7 +96,7 @@ export class Board {
     this._bitboards = value;
   }
   public setBitboard(piece: Piece, square: Square): void {
-    this._bitboards.setBit(piece, square);
+    this._bitboards.setPieceBit(piece, square);
   }
   // FEN GETTERS/SETTERS
   public set activeColour(value: PieceColour) {
@@ -172,10 +172,30 @@ export class Board {
         : this.fullMoveClock;
   }
 
-  public movePiece(piece: Piece, from: string, to: string) {
-    const fromSquare = coordToSquare(from);
-    const toSquare = coordToSquare(to);
-    this._bitboards.moveBit(piece, fromSquare, toSquare);
+  public pieceAt(square: Square): Piece {
+    if (!BitUtils.isBitSet64(this.occupancy, square)) return PIECE_TYPES.Empty;
+    const idx = this._bitboards.findOccupiedBitboardIndex(square);
+    return BitboardUtils.indexToPiece(idx);
+  }
+  // Put in move.make
+  // public makeMove(move: Move) {
+  //   const from = MoveChess.getFrom(move);
+  //   const to = MoveChess.getTo(move);
+  //   this.removeOccupiedSquare(to);
+  //   this.movePiece(from, to);
+  // }
+  public isOccupied(at: Square): boolean {
+    // Implement on bitboards instead
+    return BitUtils.isBitSet64(this.occupancy, at);
+  }
+  public setPiece(piece: Piece, to: Square): void {
+    this._bitboards.setPieceBit(piece, to);
+  }
+  public movePiece(from: Square, to: Square) {
+    this._bitboards.moveBit(from, to);
+  }
+  public removePiece(at: Square): void {
+    this._bitboards.clearBit(at);
   }
 
   private getKingSquare(colour: PieceColour): Square {
@@ -188,15 +208,6 @@ export class Board {
   }
   public getBlackKingSquare(): Square {
     return this.getKingSquare(PIECE_COLOURS.Black);
-  }
-  public pieceAt(square: Square): Piece {
-    if (!BitUtils.isBitSet64(this.occupancy, square)) return PIECE_TYPES.Empty;
-    let piece: Piece | null = null;
-    for (let index = 0; index < this.bitboardsList.length; index++) {
-      if (BitUtils.isBitSet64(this.bitboardsList[index]!, square))
-        return BitboardUtils.indexToPiece(index);
-    }
-    return PIECE_TYPES.Empty;
   }
   public updateBoardState(move: Move): void {
     this.updateHalfMoveClock(move);
@@ -215,12 +226,5 @@ export class Board {
   }
   public static fromFen(fen: string): Board {
     return new Board(fen);
-  }
-  public move(from: string, to: string) {
-    // const fromBitPosition = this.selectSquare(from);
-    // const toBitPosition = this.selectSquare(to);
-    // const fromBoard = this.bitboards.getBoardWithActiveBit(fromBitPosition);
-    // Print.printSimple(fromBoard);
-    // this.bitBoards.updateBoard(fromBoard, fromBitPosition, toBitPosition);
   }
 }
