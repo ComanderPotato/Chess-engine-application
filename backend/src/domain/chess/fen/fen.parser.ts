@@ -60,7 +60,10 @@ export function parsePiecePlacement(value?: string): Bitboards {
       if (char >= "1" && char <= "8") {
         file += Number(char);
       } else if (isValidNotation(char)) {
-        bitboards.setBit(notationToPiece(char), fileRankToSquare(file++, rank));
+        bitboards.setPieceBit(
+          notationToPiece(char),
+          fileRankToSquare(file++, rank),
+        );
       } else {
         throwInvalidFen(`invalid character: "${char}"`);
       }
