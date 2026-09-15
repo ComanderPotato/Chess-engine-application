@@ -185,8 +185,7 @@ export class Board {
   //   this.movePiece(from, to);
   // }
   public isOccupied(at: Square): boolean {
-    // Implement on bitboards instead
-    return BitUtils.isBitSet64(this.occupancy, at);
+    return this._bitboards.isOccupied(at);
   }
   public setPiece(piece: Piece, to: Square): void {
     this._bitboards.setPieceBit(piece, to);

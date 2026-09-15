@@ -264,6 +264,10 @@ describe("bitboard.chess", () => {
       });
     });
     describe(TEST_CATEGORIES.EXTRACTION, () => {
+      describe.todo(
+        Bitboards.prototype.findOccupiedBitboardIndex.name,
+        () => {},
+      );
       describe("getBitboard", () => {
         it("returns the piece bitboard", () => {
           for (const piece of ALL_PIECES) {
