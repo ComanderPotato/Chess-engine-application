@@ -6,10 +6,10 @@ import {
   CastlingRights,
   EnPassant,
   ReadonlyBitboards,
+  SideCastlingRights,
   Square,
 } from "./types.chess.js";
 import { Bitboards } from "../bitboard/bitboard.chess.js";
-import { coordToSquare } from "../utils/coord.utils.js";
 import { parseFen } from "../fen/fen.parser.js";
 import { composeFen } from "../fen/fen.composer.js";
 import { Move } from "../movegen/move/move.types.js";
@@ -38,17 +38,30 @@ export class Board {
     parseFen(fen, this);
   }
 
-  public getWhiteKingSideCastlingRights() {
-    return BitUtils.isBitSet32(this._castlingRights, 4);
+  public getBlackCastlingRights(): SideCastlingRights {
+    return {
+      canKingSide: this.getBlackKingSideCastlingRights(),
+      canQueenSide: this.getBlackQueenSideCastlingRights(),
+    };
   }
-  public getWhiteQueenSideCastlingRights() {
+  public getWhiteCastlingRights(): SideCastlingRights {
+    return {
+      canKingSide: this.getWhiteKingSideCastlingRights(),
+      canQueenSide: this.getWhiteQueenSideCastlingRights(),
+    };
+  }
+  // private getCastlingRights(
+  public getWhiteKingSideCastlingRights() {
     return BitUtils.isBitSet32(this._castlingRights, 3);
   }
-  public getBlackKingSideCastlingRights() {
+  public getWhiteQueenSideCastlingRights() {
     return BitUtils.isBitSet32(this._castlingRights, 2);
   }
-  public getBlackQueenSideCastlingRights() {
+  public getBlackKingSideCastlingRights() {
     return BitUtils.isBitSet32(this._castlingRights, 1);
+  }
+  public getBlackQueenSideCastlingRights() {
+    return BitUtils.isBitSet32(this._castlingRights, 0);
   }
 
   // BITBOARD GETTERS/SETTERS
