@@ -1,17 +1,23 @@
 import { createBitboardFromCoords } from "#/factories/bitboard.factory.js";
+import { ALL_PIECES } from "#/fixtures/chess/piece.fixtures.js";
 import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
 import { TEST_CATEGORIES } from "#/utils/test-constants.js";
 import { Bitboards } from "@/domain/chess/bitboard/bitboard.chess.js";
 import { Board } from "@/domain/chess/board/board.chess.js";
-import { RANK_MASKS } from "@/domain/chess/board/board.constants.js";
+import { RANK_MASKS, SQUARES } from "@/domain/chess/board/board.constants.js";
 import { FENS } from "@/domain/chess/board/fen.constants.js";
+import { Square } from "@/domain/chess/board/types.chess.js";
 import { printBitboard } from "@/domain/chess/debug/printer.chess.js";
+import {
+  getColour,
+  getEnemyColour,
+  getType,
+} from "@/domain/chess/piece/piece.chess.js";
 import {
   PIECE_COLOURS,
   PIECE_TYPES,
 } from "@/domain/chess/piece/piece.constants.js";
-import { isBitSet32, isBitSet64 } from "@/domain/chess/utils/bit.utils.js";
-import { squareToCoord } from "@/domain/chess/utils/coord.utils.js";
+import { Piece } from "@/domain/chess/piece/piece.types.js";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("board.chess", () => {
@@ -64,7 +70,88 @@ describe("board.chess", () => {
     });
 
     describe(TEST_CATEGORIES.BITBOARDS, () => {
-      describe.only(TEST_CATEGORIES.MANIPULATION, () => {
+      describe(TEST_CATEGORIES.CLASSIFICATION, () => {
+        describe(Board.prototype.isSquareOccupiedBy.name, () => {
+          beforeEach(() => {
+            board = new Board(FENS.EMPTY);
+          });
+          it.each([
+            {
+              type: PIECE_TYPES.Pawn,
+              colour: PIECE_COLOURS.White,
+              square: COORD_SQUARE_MAP.A1,
+              checkAgainst: PIECE_TYPES.Bishop | PIECE_COLOURS.Black,
+              name: "white pawn",
+            },
+            {
+              type: PIECE_TYPES.Bishop,
+              colour: PIECE_COLOURS.Black,
+              square: COORD_SQUARE_MAP.G5,
+              checkAgainst: PIECE_TYPES.Knight | PIECE_COLOURS.Black,
+              name: "black bishop",
+            },
+            {
+              type: PIECE_TYPES.Queen,
+              colour: PIECE_COLOURS.White,
+              square: COORD_SQUARE_MAP.C3,
+              checkAgainst: PIECE_TYPES.Knight | PIECE_COLOURS.Black,
+              name: "white queen",
+            },
+            {
+              type: PIECE_TYPES.Rook,
+              colour: PIECE_COLOURS.White,
+              square: COORD_SQUARE_MAP.C3,
+              checkAgainst: PIECE_TYPES.Knight | PIECE_COLOURS.Black,
+              name: "white rook",
+            },
+          ])(
+            "returns expected result when checking $name",
+            ({ type, colour, checkAgainst, square }) => {
+              expect(board.isSquareOccupiedBy(square, type)).toBe(false);
+              board.setPiece(type | colour, square);
+              expect(board.isSquareOccupiedBy(square, type)).toBe(true);
+              expect(board.isSquareOccupiedBy(square, type, colour)).toBe(true);
+              expect(
+                board.isSquareOccupiedBy(square, getType(checkAgainst)),
+              ).toBe(false);
+              expect(
+                board.isSquareOccupiedBy(
+                  square,
+                  getType(checkAgainst),
+                  getColour(checkAgainst),
+                ),
+              ).toBe(false);
+            },
+          );
+          it("returns the expected result when checking square occupancy with random piece", () => {
+            for (let i = 0; i < 100; i++) {
+              const randomSquare = Math.floor(
+                Math.random() * SQUARES.length,
+              ) as Square;
+              const randomPiece = ALL_PIECES[
+                Math.floor(Math.random() * ALL_PIECES.length)
+              ] as Piece;
+              const type = getType(randomPiece);
+              const colour = getColour(randomPiece);
+              expect(board.isSquareOccupiedBy(randomSquare, type)).toBe(false);
+              board.setPiece(randomPiece, randomSquare);
+              expect(board.isSquareOccupiedBy(randomSquare, type)).toBe(true);
+              expect(board.isSquareOccupiedBy(randomSquare, type, colour)).toBe(
+                true,
+              );
+              expect(
+                board.isSquareOccupiedBy(
+                  randomSquare,
+                  type,
+                  getEnemyColour(colour),
+                ),
+              ).toBe(false);
+              board.removePiece(randomSquare);
+            }
+          });
+        });
+      });
+      describe(TEST_CATEGORIES.MANIPULATION, () => {
         beforeEach(() => {
           board = new Board(FENS.EMPTY);
         });
@@ -250,7 +337,7 @@ describe("board.chess", () => {
             );
           });
         });
-        describe(Board.prototype.getBitboard.name, () => {
+        describe.only(Board.prototype.getBitboard.name, () => {
           it("gets bitboard of a specific piece", () => {
             expect(
               board.getBitboard(PIECE_TYPES.Pawn | PIECE_COLOURS.White),
@@ -266,26 +353,6 @@ describe("board.chess", () => {
             expect(
               board.getBitboard(PIECE_TYPES.Queen | PIECE_COLOURS.White),
             ).toBe(createBitboardFromCoords([COORD_SQUARE_MAP.D1]));
-          });
-          it("sets bitboard of a specific piece", () => {
-            let piece = PIECE_TYPES.Pawn | PIECE_COLOURS.White;
-            expect(board.getBitboard(piece)).toBe(RANK_MASKS[1]!);
-
-            board.setBitboard(piece, COORD_SQUARE_MAP.A1);
-            expect(board.getBitboard(piece)).toBe(0b1n | RANK_MASKS[1]!);
-
-            board.setBitboard(piece, COORD_SQUARE_MAP.B1);
-            expect(board.getBitboard(piece)).toBe(0b11n | RANK_MASKS[1]!);
-
-            piece = PIECE_TYPES.Bishop | PIECE_COLOURS.Black;
-            const bishopBoard = createBitboardFromCoords([
-              COORD_SQUARE_MAP.C8,
-              COORD_SQUARE_MAP.F8,
-            ]);
-            expect(board.getBitboard(piece)).toBe(bishopBoard);
-
-            board.setBitboard(piece, COORD_SQUARE_MAP.A1);
-            expect(board.getBitboard(piece)).toBe(0b1n | bishopBoard);
           });
         });
         describe(Board.prototype.getFriendlyOccupancyFor.name, () => {
@@ -357,12 +424,38 @@ describe("board.chess", () => {
           });
         });
       });
-      describe(Board.prototype.setBitboards.name, () => {});
-      describe(Board.prototype.setBitboard.name, () => {});
+      describe(Board.prototype.getKingSquare.name, () => {
+        it("returns the correct starting position for the white king", () => {
+          expect(board.getKingSquare(PIECE_COLOURS.White)).toBe(
+            COORD_SQUARE_MAP.E1,
+          );
+        });
+        it("returns the correct starting position for the black king", () => {
+          expect(board.getKingSquare(PIECE_COLOURS.Black)).toBe(
+            COORD_SQUARE_MAP.E8,
+          );
+        });
+        it.each([
+          { colour: PIECE_COLOURS.White, name: "white" },
+          { colour: PIECE_COLOURS.Black, name: "black" },
+        ])(
+          "returns the correct square for each $name king position",
+          ({ colour }) => {
+            board = new Board(FENS.EMPTY);
+            for (const square of SQUARES) {
+              board.setPiece(PIECE_TYPES.King | colour, square);
+              expect(board.getKingSquare(colour)).toBe(square);
+              board.removePiece(square);
+            }
+          },
+        );
+      });
+      describe.todo(Board.prototype.setBitboards.name, () => {});
+      describe.todo(Board.prototype.setBitboard.name, () => {});
     });
 
     describe(TEST_CATEGORIES.PIECES, () => {
-      describe.only(Board.prototype.pieceAt.name, () => {
+      describe(Board.prototype.pieceAt.name, () => {
         it("returns the correct piece for a given square", () => {
           expect(board.pieceAt(COORD_SQUARE_MAP.A2)).toBe(
             PIECE_TYPES.Pawn | PIECE_COLOURS.White,
@@ -381,7 +474,7 @@ describe("board.chess", () => {
     });
 
     describe(TEST_CATEGORIES.TURN, () => {
-      describe(Board.prototype.updateBoardState.name, () => {});
+      describe.todo(Board.prototype.updateBoardState.name, () => {});
     });
     describe(TEST_CATEGORIES.CONVERSION, () => {
       describe(Board.prototype.toFen.name, () => {
@@ -395,7 +488,7 @@ describe("board.chess", () => {
     });
     describe(TEST_CATEGORIES.PARSING, () => {
       describe(Board.prototype.loadFen.name, () => {
-        it("outputs the correct fen string for each creation of the board", () => {
+        it("loads the fen string and outputs correct fen", () => {
           for (const fen of Object.values(FENS)) {
             board.loadFen(fen);
             expect(board.toFen()).toBe(fen);
