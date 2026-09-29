@@ -152,6 +152,14 @@ export class Board {
   }
 
   // FEN UPDATE OPERATIONS
+  public updateBoardState(move: Move): void {
+    this.updateHalfMoveClock(move);
+    this.updateEnPassant(move);
+    this.updateFullMoveClock();
+    this.updateActiveColour();
+
+    this.updatePiecePlacement();
+  }
   private updatePiecePlacement(): void {}
   private updateEnPassant(move: Move): void {
     const fromSquare = MoveChess.getFrom(move);
@@ -190,13 +198,16 @@ export class Board {
     const idx = this._bitboards.findOccupiedBitboardIndex(square);
     return BitboardUtils.indexToPiece(idx);
   }
-  // Put in move.make
-  // public makeMove(move: Move) {
-  //   const from = MoveChess.getFrom(move);
-  //   const to = MoveChess.getTo(move);
-  //   this.removeOccupiedSquare(to);
-  //   this.movePiece(from, to);
-  // }
+  public isSquareOccupiedBy(
+    square: Square,
+    type: PieceType,
+    colour?: PieceColour,
+  ): boolean {
+    const bitboard = colour
+      ? this.getBitboard(type | colour)
+      : this.getOccupancy(type);
+    return BitUtils.isBitSet64(bitboard, square);
+  }
   public isOccupied(at: Square): boolean {
     return this._bitboards.isOccupied(at);
   }
@@ -210,24 +221,10 @@ export class Board {
     this._bitboards.clearBit(at);
   }
 
-  private getKingSquare(colour: PieceColour): Square {
+  public getKingSquare(colour: PieceColour): Square {
     return SquareUtils.toSquare(
       BitboardUtils.getLSBIndex(this.getBitboard(PIECE_TYPES.King | colour))!,
     );
-  }
-  public getWhiteKingSquare(): Square {
-    return this.getKingSquare(PIECE_COLOURS.White);
-  }
-  public getBlackKingSquare(): Square {
-    return this.getKingSquare(PIECE_COLOURS.Black);
-  }
-  public updateBoardState(move: Move): void {
-    this.updateHalfMoveClock(move);
-    this.updateEnPassant(move);
-    this.updateFullMoveClock();
-    this.updateActiveColour();
-
-    this.updatePiecePlacement();
   }
 
   public toFen(): string {
