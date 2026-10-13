@@ -80,5 +80,5 @@ function extractFlag(value: number): number {
   return (value & MOVE_FLAG_MASK) >> MOVE_FLAG_SHIFT;
 }
 export function isValidFlag(value: number): value is MoveFlag {
-  return value >= MOVE_FLAGS.Quiet && value <= MOVE_FLAGS.Check;
+  return value >= MOVE_FLAGS.Quiet && value <= MOVE_FLAGS.QueenPromotionCapture;
 }
