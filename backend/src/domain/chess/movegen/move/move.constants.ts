@@ -18,15 +18,14 @@ export const MOVE_FLAGS = {
   QueenCastle: 3,
   Capture: 4,
   EnPassantCapture: 5,
-  KnightPromotion: 6,
-  BishopPromotion: 7,
-  RookPromotion: 8,
-  QueenPromotion: 9,
-  KnightPromotionCapture: 10,
-  BishopPromotionCapture: 11,
-  RookPromotionCapture: 12,
-  QueenPromotionCapture: 13,
-  Check: 14, // Maybe don't need
+  KnightPromotion: 8,
+  BishopPromotion: 9,
+  RookPromotion: 10,
+  QueenPromotion: 11,
+  KnightPromotionCapture: 12,
+  BishopPromotionCapture: 13,
+  RookPromotionCapture: 14,
+  QueenPromotionCapture: 15,
 } as const;
 
 export const PROMOTION_FLAGS = [
@@ -44,3 +43,8 @@ export const PROMOTION_CAPTURE_FLAGS = [
 ] as const;
 
 export type MoveFlag = (typeof MOVE_FLAGS)[keyof typeof MOVE_FLAGS];
+
+export const KING_SIDE_CASTLING_CHECK_MASK = 0b01110000n;
+export const KING_SIDE_CASTLING_FRIENDLY_MASK = 0b01100000n;
+export const QUEEN_SIDE_CASTLING_CHECK_MASK = 0b00011100n;
+export const QUEEN_SIDE_CASTLING_FRIENDLY_MASK = 0b00011110n;
