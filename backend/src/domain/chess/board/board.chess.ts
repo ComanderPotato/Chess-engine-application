@@ -177,6 +177,7 @@ export class Board {
   private updateCastlingRights(move: Move): void {
     if (this.castlingRights === 0) return;
     const from = MoveChess.getFrom(move);
+    const to = MoveChess.getTo(move);
     if (from === COORD_SQUARE_MAP.E1) {
       this.clearWhiteKingSideCastlingRights();
       this.clearWhiteQueenSideCastlingRights();
@@ -187,19 +188,19 @@ export class Board {
       this.clearBlackQueenSideCastlingRights();
       return;
     }
-    if (from === COORD_SQUARE_MAP.A1) {
+    if (from === COORD_SQUARE_MAP.A1 || to === COORD_SQUARE_MAP.A1) {
       this.clearWhiteQueenSideCastlingRights();
       return;
     }
-    if (from === COORD_SQUARE_MAP.H1) {
+    if (from === COORD_SQUARE_MAP.H1 || to === COORD_SQUARE_MAP.H1) {
       this.clearWhiteKingSideCastlingRights();
       return;
     }
-    if (from === COORD_SQUARE_MAP.A8) {
+    if (from === COORD_SQUARE_MAP.A8 || to === COORD_SQUARE_MAP.A8) {
       this.clearBlackQueenSideCastlingRights();
       return;
     }
-    if (from === COORD_SQUARE_MAP.H8) {
+    if (from === COORD_SQUARE_MAP.H8 || to === COORD_SQUARE_MAP.H8) {
       this.clearBlackKingSideCastlingRights();
     }
   }
