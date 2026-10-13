@@ -20,6 +20,7 @@ import * as BitUtils from "../utils/bit.utils.js";
 import * as BitboardUtils from "../utils/bitboard.utils.js";
 import * as SquareUtils from "../utils/square.utils.js";
 import { MOVE_FLAGS } from "../movegen/move/move.constants.js";
+import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
 
 export class Board {
   private _bitboards: Bitboards = new Bitboards();
@@ -31,7 +32,7 @@ export class Board {
 
   private _enPassant!: EnPassant;
 
-  private _halfmoveClock!: number;
+  private _halfMoveClock!: number;
 
   private _fullMoveClock!: number;
   constructor(fen: string = FENS.START) {
@@ -50,18 +51,29 @@ export class Board {
       canQueenSide: this.getWhiteQueenSideCastlingRights(),
     };
   }
-  // private getCastlingRights(
   public getWhiteKingSideCastlingRights() {
-    return BitUtils.isBitSet32(this._castlingRights, 3);
+    return BitUtils.isBitSet32(this._castlingRights, 0);
   }
   public getWhiteQueenSideCastlingRights() {
-    return BitUtils.isBitSet32(this._castlingRights, 2);
-  }
-  public getBlackKingSideCastlingRights() {
     return BitUtils.isBitSet32(this._castlingRights, 1);
   }
+  public getBlackKingSideCastlingRights() {
+    return BitUtils.isBitSet32(this._castlingRights, 3);
+  }
   public getBlackQueenSideCastlingRights() {
-    return BitUtils.isBitSet32(this._castlingRights, 0);
+    return BitUtils.isBitSet32(this._castlingRights, 4);
+  }
+  public clearWhiteKingSideCastlingRights(): void {
+    BitUtils.clearBit32(this._castlingRights, 3);
+  }
+  public clearWhiteQueenSideCastlingRights(): void {
+    BitUtils.clearBit32(this._castlingRights, 2);
+  }
+  public clearBlackKingSideCastlingRights(): void {
+    BitUtils.clearBit32(this._castlingRights, 1);
+  }
+  public clearBlackQueenSideCastlingRights(): void {
+    BitUtils.clearBit32(this._castlingRights, 0);
   }
 
   // BITBOARD GETTERS/SETTERS
@@ -106,6 +118,7 @@ export class Board {
     return this._bitboards.getBitboard(piece);
   }
   public setBitboards(value: Bitboards): void {
+    this._bitboards.bitboards;
     this._bitboards = value;
   }
   public setBitboard(piece: Piece, square: Square): void {
@@ -125,7 +138,7 @@ export class Board {
   }
 
   public set halfMoveClock(value: number) {
-    this._halfmoveClock = value;
+    this._halfMoveClock = value;
   }
 
   public set fullMoveClock(value: number) {
@@ -144,7 +157,7 @@ export class Board {
     return this._enPassant;
   }
   public get halfMoveClock(): number {
-    return this._halfmoveClock;
+    return this._halfMoveClock;
   }
 
   public get fullMoveClock(): number {
@@ -155,10 +168,40 @@ export class Board {
   public updateBoardState(move: Move): void {
     this.updateHalfMoveClock(move);
     this.updateEnPassant(move);
+    this.updateCastlingRights(move);
     this.updateFullMoveClock();
     this.updateActiveColour();
 
     this.updatePiecePlacement();
+  }
+  private updateCastlingRights(move: Move): void {
+    if (this.castlingRights === 0) return;
+    const from = MoveChess.getFrom(move);
+    if (from === COORD_SQUARE_MAP.E1) {
+      this.clearWhiteKingSideCastlingRights();
+      this.clearWhiteQueenSideCastlingRights();
+      return;
+    }
+    if (from === COORD_SQUARE_MAP.E8) {
+      this.clearBlackKingSideCastlingRights();
+      this.clearBlackQueenSideCastlingRights();
+      return;
+    }
+    if (from === COORD_SQUARE_MAP.A1) {
+      this.clearWhiteQueenSideCastlingRights();
+      return;
+    }
+    if (from === COORD_SQUARE_MAP.H1) {
+      this.clearWhiteKingSideCastlingRights();
+      return;
+    }
+    if (from === COORD_SQUARE_MAP.A8) {
+      this.clearBlackQueenSideCastlingRights();
+      return;
+    }
+    if (from === COORD_SQUARE_MAP.H8) {
+      this.clearBlackKingSideCastlingRights();
+    }
   }
   private updatePiecePlacement(): void {}
   private updateEnPassant(move: Move): void {
