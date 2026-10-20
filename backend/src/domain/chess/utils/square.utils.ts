@@ -48,6 +48,17 @@ export function isSquareOnFile(square: Square, file: File): boolean {
 export function isSquareOnRank(square: Square, rank: Rank): boolean {
   return toRank(square) === RANKS[rank];
 }
+export function isPromotionSquare(to: Square): boolean {
+  const rank = toRank(to);
+
+  return rank === RANKS.FIRST || rank === RANKS.EIGHTH;
+}
+export function isEnPassantSquare(
+  enPassant: Square | null,
+  to: Square,
+): boolean {
+  return enPassant === to;
+}
 
 export function isEdge(square: Square): boolean {
   const rank = toRank(square);
