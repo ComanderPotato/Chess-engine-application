@@ -12,6 +12,7 @@
     "build": "tsc --project tsconfig.build.json && tsc-alias --project tsconfig.build.json",
     "start": "node ./dist/app.js",
     "circular": "npx madge --extensions ts --ts-config tsconfig.json --circular src",
+    "perft": "npx tsx ./tests/benchmarks/perft.ts",
     "clean": "rimraf dist"
   },
   "keywords": [],
