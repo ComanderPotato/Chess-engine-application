@@ -21,7 +21,40 @@ import {
  * by a blocker, which is just a set bit on a secondary
  * bitboard.
  */
+export function computeRay(from: Square, to: Square): Bitboard {
+  const fromFile = from % 8;
+  const fromRank = Math.floor(from / 8);
 
+  const toFile = to % 8;
+  const toRank = Math.floor(to / 8);
+
+  const fileDiff = toFile - fromFile;
+  const rankDiff = toRank - fromRank;
+
+  // Squares must be aligned horizontally, vertically, or diagonally.
+  if (
+    fileDiff !== 0 &&
+    rankDiff !== 0 &&
+    Math.abs(fileDiff) !== Math.abs(rankDiff)
+  ) {
+    return 0n;
+  }
+
+  const fileStep = Math.sign(fileDiff);
+  const rankStep = Math.sign(rankDiff);
+
+  let file = fromFile + fileStep;
+  let rank = fromRank + rankStep;
+  let ray = 0n;
+
+  while (file !== toFile || rank !== toRank) {
+    ray |= 1n << BigInt(rank * 8 + file);
+    file += fileStep;
+    rank += rankStep;
+  }
+
+  return ray;
+}
 export function walkRay(
   square: Square,
   direction: Direction,
