@@ -5,9 +5,8 @@ import { TEST_CATEGORIES } from "#/utils/test-constants.js";
 import { Bitboards } from "@/domain/chess/bitboard/bitboard.chess.js";
 import { Board } from "@/domain/chess/board/board.chess.js";
 import { RANK_MASKS, SQUARES } from "@/domain/chess/board/board.constants.js";
-import { FENS } from "@/domain/chess/board/fen.constants.js";
+import { FENS } from "@/domain/chess/fen/fen.constants.js";
 import { Square } from "@/domain/chess/board/types.chess.js";
-import { printBitboard } from "@/domain/chess/debug/printer.chess.js";
 import {
   getColour,
   getEnemyColour,
@@ -146,7 +145,7 @@ describe("board.chess", () => {
                   getEnemyColour(colour),
                 ),
               ).toBe(false);
-              board.removePiece(randomSquare);
+              board.removeBit(randomSquare);
             }
           });
         });
@@ -170,7 +169,7 @@ describe("board.chess", () => {
             );
           });
         });
-        describe(Board.prototype.removePiece.name, () => {
+        describe(Board.prototype.removeBit.name, () => {
           it.each([
             { to: COORD_SQUARE_MAP.E4, name: "e4" },
             { to: COORD_SQUARE_MAP.A1, name: "a1" },
@@ -181,11 +180,11 @@ describe("board.chess", () => {
             expect(board.isOccupied(to)).toBe(false);
             board.setPiece(piece, to);
             expect(board.isOccupied(to)).toBe(true);
-            board.removePiece(to);
+            board.removeBit(to);
             expect(board.isOccupied(to)).toBe(false);
           });
         });
-        describe(Board.prototype.movePiece.name, () => {
+        describe(Board.prototype.moveBit.name, () => {
           it.each([
             {
               from: COORD_SQUARE_MAP.A2,
@@ -208,7 +207,7 @@ describe("board.chess", () => {
             board.setPiece(piece, from);
             expect(board.isOccupied(from)).toBe(true);
             expect(board.isOccupied(to)).toBe(false);
-            board.movePiece(from, to);
+            board.moveBit(from, to);
             expect(board.isOccupied(from)).toBe(false);
             expect(board.isOccupied(to)).toBe(true);
           });
@@ -337,7 +336,7 @@ describe("board.chess", () => {
             );
           });
         });
-        describe.only(Board.prototype.getBitboard.name, () => {
+        describe(Board.prototype.getBitboard.name, () => {
           it("gets bitboard of a specific piece", () => {
             expect(
               board.getBitboard(PIECE_TYPES.Pawn | PIECE_COLOURS.White),
@@ -368,10 +367,10 @@ describe("board.chess", () => {
 
             board.setBitboard(
               PIECE_TYPES.Pawn | PIECE_COLOURS.White,
-              COORD_SQUARE_MAP.A1,
+              COORD_SQUARE_MAP.A3,
             );
             expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.White)).toBe(
-              0b1n | whiteBoard,
+              (1n << BigInt(COORD_SQUARE_MAP.A3)) | whiteBoard,
             );
             expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.Black)).toBe(
               blackBoard,
@@ -379,13 +378,13 @@ describe("board.chess", () => {
 
             board.setBitboard(
               PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
-              COORD_SQUARE_MAP.A1,
+              COORD_SQUARE_MAP.A5,
             );
             expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.White)).toBe(
-              0b1n | whiteBoard,
+              (1n << BigInt(COORD_SQUARE_MAP.A3)) | whiteBoard,
             );
             expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.Black)).toBe(
-              0b1n | blackBoard,
+              (1n << BigInt(COORD_SQUARE_MAP.A5)) | blackBoard,
             );
           });
         });
@@ -402,10 +401,10 @@ describe("board.chess", () => {
 
             board.setBitboard(
               PIECE_TYPES.Pawn | PIECE_COLOURS.White,
-              COORD_SQUARE_MAP.A1,
+              COORD_SQUARE_MAP.A3,
             );
             expect(board.getEnemyOccupancyFor(PIECE_COLOURS.Black)).toBe(
-              0b1n | whiteBoard,
+              (1n << BigInt(COORD_SQUARE_MAP.A3)) | whiteBoard,
             );
             expect(board.getEnemyOccupancyFor(PIECE_COLOURS.White)).toBe(
               blackBoard,
@@ -413,13 +412,13 @@ describe("board.chess", () => {
 
             board.setBitboard(
               PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
-              COORD_SQUARE_MAP.A1,
+              COORD_SQUARE_MAP.A5,
             );
             expect(board.getEnemyOccupancyFor(PIECE_COLOURS.Black)).toBe(
-              0b1n | whiteBoard,
+              (1n << BigInt(COORD_SQUARE_MAP.A3)) | whiteBoard,
             );
             expect(board.getEnemyOccupancyFor(PIECE_COLOURS.White)).toBe(
-              0b1n | blackBoard,
+              (1n << BigInt(COORD_SQUARE_MAP.A5)) | blackBoard,
             );
           });
         });
@@ -445,7 +444,7 @@ describe("board.chess", () => {
             for (const square of SQUARES) {
               board.setPiece(PIECE_TYPES.King | colour, square);
               expect(board.getKingSquare(colour)).toBe(square);
-              board.removePiece(square);
+              board.removeBit(square);
             }
           },
         );
