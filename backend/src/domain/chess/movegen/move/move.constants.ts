@@ -11,6 +11,11 @@ export const MOVE_TO_MASK = MOVE_FROM_MASK << MOVE_TO_SHIFT;
 export const MOVE_FLAG_MASK = ((1 << MOVE_FLAG_BITS) - 1) << MOVE_FLAG_SHIFT;
 export const MOVE_MASK = (1 << (MOVE_FLAG_SHIFT + MOVE_FLAG_BITS)) - 1;
 
+export const MOVE_SPECIAL_0_FLAG = 0b0001;
+export const MOVE_SPECIAL_1_FLAG = 0b0010;
+export const MOVE_CAPTURE_FLAG = 0b0100;
+export const MOVE_PROMOTION_FLAG = 0b1000;
+
 export const MOVE_FLAGS = {
   Quiet: 0,
   DoublePawnPush: 1,
@@ -45,6 +50,6 @@ export const PROMOTION_CAPTURE_FLAGS = [
 export type MoveFlag = (typeof MOVE_FLAGS)[keyof typeof MOVE_FLAGS];
 
 export const KING_SIDE_CASTLING_CHECK_MASK = 0b01110000n;
-export const KING_SIDE_CASTLING_FRIENDLY_MASK = 0b01100000n;
+export const KING_SIDE_CASTLING_OCCUPANCY_MASK = 0b01100000n;
 export const QUEEN_SIDE_CASTLING_CHECK_MASK = 0b00011100n;
-export const QUEEN_SIDE_CASTLING_FRIENDLY_MASK = 0b00011110n;
+export const QUEEN_SIDE_CASTLING_OCCUPANCY_MASK = 0b00001110n;
