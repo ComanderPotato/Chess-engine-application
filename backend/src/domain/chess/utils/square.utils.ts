@@ -28,7 +28,11 @@ export function isOnSameRank(a: Square, b: Square): boolean {
   return toRank(a) - toRank(b) === 0;
 }
 export function isOnSameDiagonal(a: Square, b: Square): boolean {
-  return toFile(toSquare(b - a)) === toRank(b) - toRank(a);
+  const fileDiff = Math.abs(toFile(a) - toFile(a));
+  const rankDiff = Math.abs(toRank(a) - toRank(b));
+
+  return fileDiff === rankDiff;
+  // return toFile(toSquare(Math.abs(b - a))) === toRank(b) - toRank(a);
 }
 export function isOnAFile(square: Square): boolean {
   return isSquareOnFile(square, "A");
@@ -58,6 +62,9 @@ export function isEnPassantSquare(
   to: Square,
 ): boolean {
   return enPassant === to;
+}
+export function isDoublePawnPushSquare(from: Square, to: Square): boolean {
+  return Math.abs(toRank(from) - toRank(to)) > 1;
 }
 
 export function isEdge(square: Square): boolean {
