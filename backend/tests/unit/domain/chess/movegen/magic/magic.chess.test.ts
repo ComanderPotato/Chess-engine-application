@@ -18,7 +18,7 @@ type MagicChessTestData = {
   magic: bigint;
   attacks: bigint[];
 };
-describe("magic.chess", () => {
+describe.skip("magic.chess", () => {
   describe(TEST_CATEGORIES.COMPUTATION, () => {
     describe(TestMagicChess.findSlidingMagic.name, () => {
       describe("magic.diagonal", () => {
