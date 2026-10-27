@@ -58,20 +58,19 @@ export function generateKingAttacks(kingBoard: Bitboard, occupancy: Bitboard) {
   return generateTableAttacks(kingBoard, occupancy, KING_ATTACKS);
 }
 
-// Sliding generators
-export function generateDiagonalAttacks(
+function generateDiagonalAttacks(
   pieceBoard: Bitboard,
   occpancy: Bitboard,
 ): Bitboard {
   return generateSlidingAttacks(pieceBoard, occpancy, DIAGONAL_TABLES);
 }
-export function generateOrthogonalAttacks(
+function generateOrthogonalAttacks(
   pieceBoard: Bitboard,
   occupancy: Bitboard,
 ): Bitboard {
   return generateSlidingAttacks(pieceBoard, occupancy, ORTHOGONAL_TABLES);
 }
-export function generateSlidingAttacks(
+function generateSlidingAttacks(
   pieceBoard: Bitboard,
   occupancy: Bitboard,
   tables: SlidingTables,
@@ -99,7 +98,7 @@ export function generateSlidingAttack(
   const attacks = tables.ATTACKS[square]![index]!;
   return attacks;
 }
-function generateTableAttack(
+export function generateTableAttack(
   square: Square,
   activeOccupancy: Bitboard,
   table: ReadonlyBitboards,
