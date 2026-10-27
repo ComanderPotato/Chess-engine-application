@@ -33,7 +33,7 @@ export const FENS = {
   DOUBLE_CHECK: "4k3/8/8/8/8/5B2/4R3/4K3 b - - 0 1",
 
   /** Absolute pin */
-  PIN: "4k3/8/8/8/8/4r3/4B3/4K3 w - - 0 1",
+  PIN: "4k3/8/8/8/8/4r3/4N3/4K3 w - - 0 1",
 
   /** Checkmate */
   CHECKMATE: "7k/6Q1/6K1/8/8/8/8/8 b - - 0 1",
