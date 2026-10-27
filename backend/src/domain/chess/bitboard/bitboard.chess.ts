@@ -9,6 +9,9 @@ import { BITBOARD_COUNT, BitboardKey } from "./bitboard.constants.js";
 export class Bitboards {
   private _bitboards: Bitboard[] = new Array(BITBOARD_COUNT).fill(0n);
 
+  constructor(bitboards: Bitboard[] = new Array(BITBOARD_COUNT).fill(0n)) {
+    this._bitboards = bitboards;
+  }
   public isOccupied(at: Square): boolean {
     return BitUtils.isBitSet64(this.allOccupancy, at);
   }
@@ -38,8 +41,11 @@ export class Bitboards {
     this._bitboards[idx]! = BitUtils.clearBit64(this._bitboards[idx]!, square);
   }
   public findOccupiedBitboardIndex(square: Square): number {
-    for (const [idx, bitboard] of this._bitboards.entries()) {
-      if (BitUtils.isBitSet64(bitboard, square)) return idx;
+    let [start, end] = BitUtils.isBitSet64(this.whiteOccupancy, square)
+      ? [0, 6]
+      : [6, 12];
+    for (; start < end; start++) {
+      if (BitUtils.isBitSet64(this._bitboards[start]!, square)) return start;
     }
     throw new Error("Unable to find bitboard index for occupied square");
   }
@@ -56,13 +62,14 @@ export class Bitboards {
       this._bitboards[pieceToIndex(type | PIECE_COLOURS.White)]!
     );
   }
+
   public getFriendlyOccupancyFor(colour: PieceColour) {
     return isWhite(colour) ? this.whiteOccupancy : this.blackOccupancy;
   }
-
   public getEnemyOccupancyFor(colour: PieceColour) {
     return isWhite(colour) ? this.blackOccupancy : this.whiteOccupancy;
   }
+
   public get allOccupancy(): Bitboard {
     return this.whiteOccupancy | this.blackOccupancy;
   }
