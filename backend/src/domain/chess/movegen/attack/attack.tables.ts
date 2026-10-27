@@ -6,13 +6,20 @@ import {
 import { PIECE_PROPERTIES } from "@/domain/chess/piece/piece.constants.js";
 import * as Attacks from "./attack.precompute.js";
 import {
-  ROOK_MAGICS_PRECOMPUTE,
-  ROOK_SHIFTS_PRECOMPUTE,
-} from "../magic/rook.magic.js";
+  ORTHOGONAL_MAGICS_PRECOMPUTE,
+  ORTHOGONAL_SHIFTS_PRECOMPUTE,
+} from "../magic/orthogonal.magic.js";
 import {
-  BISHOP_MAGICS_PRECOMPUTE,
-  BISHOP_SHIFTS_PRECOMPUTE,
-} from "../magic/bishop.magic.js";
+  DIAGONAL_MAGICS_PRECOMPUTE,
+  DIAGONAL_SHIFTS_PRECOMPUTE,
+} from "../magic/diagonal.magic.js";
+// import { shiftRight } from "../move/move.bitboard.js";
+// import {
+//   blackDoublePush,
+//   blackSinglePush,
+//   whiteDoublePush,
+//   whiteSinglePush,
+// } from "../move/move.generator.js";
 
 export interface SlidingTables {
   MASKS: Bitboard[];
@@ -30,16 +37,31 @@ export const PAWN_ATTACKS = Attacks.precomputePawnAttackMasks();
 // ===== Knight attacks =====
 export const KNIGHT_ATTACKS = Attacks.precomputeKnightAttackMasks();
 
+// export const PAWN_CONFIG = [
+//   {
+//     attacks: WHITE_PAWN_ATTACKS,
+//     singlePush: whiteSinglePush,
+//     doublePush: whiteDoublePush,
+//     shiftDirection: shiftRight,
+//   },
+//   {
+//     attacks: WHITE_PAWN_ATTACKS,
+//     singlePush: blackSinglePush,
+//     doublePush: blackDoublePush,
+//     shiftDirection: shiftRight,
+//   },
+// ];
+
 // ===== Bishop / Queen attacks =====
 const DIAGONAL_MASKS: Bitboard[] = Attacks.precomputeDiagonalAttackMasks();
 export const DIAGONAL_TABLES: SlidingTables = {
   MASKS: DIAGONAL_MASKS,
-  SHIFTS: BISHOP_SHIFTS_PRECOMPUTE,
-  MAGICS: BISHOP_MAGICS_PRECOMPUTE,
+  SHIFTS: DIAGONAL_SHIFTS_PRECOMPUTE,
+  MAGICS: DIAGONAL_MAGICS_PRECOMPUTE,
   ATTACKS: Attacks.precomputeSlidingAttackTables(
     DIAGONAL_MASKS,
-    BISHOP_SHIFTS_PRECOMPUTE,
-    BISHOP_MAGICS_PRECOMPUTE,
+    DIAGONAL_SHIFTS_PRECOMPUTE,
+    DIAGONAL_MAGICS_PRECOMPUTE,
     PIECE_PROPERTIES.Diagonal,
   ),
 };
@@ -48,12 +70,12 @@ export const DIAGONAL_TABLES: SlidingTables = {
 const ORTHOGONAL_MASKS: Bitboard[] = Attacks.precomputeOrthogonalAttackMasks();
 export const ORTHOGONAL_TABLES: SlidingTables = {
   MASKS: ORTHOGONAL_MASKS,
-  SHIFTS: ROOK_SHIFTS_PRECOMPUTE,
-  MAGICS: ROOK_MAGICS_PRECOMPUTE,
+  SHIFTS: ORTHOGONAL_SHIFTS_PRECOMPUTE,
+  MAGICS: ORTHOGONAL_MAGICS_PRECOMPUTE,
   ATTACKS: Attacks.precomputeSlidingAttackTables(
     ORTHOGONAL_MASKS,
-    ROOK_SHIFTS_PRECOMPUTE,
-    ROOK_MAGICS_PRECOMPUTE,
+    ORTHOGONAL_SHIFTS_PRECOMPUTE,
+    ORTHOGONAL_MAGICS_PRECOMPUTE,
     PIECE_PROPERTIES.Orthogonal,
   ),
 };
