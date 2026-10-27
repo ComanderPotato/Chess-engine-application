@@ -12,6 +12,11 @@ import { MagicOptions, MagicResponse, MagicData } from "./magic.types.js";
 import { formatGeneratedConstant } from "../../utils/codegen.utils.js";
 
 import { hasDiagonalMovement } from "../../piece/piece.chess.js";
+import {
+  PIECE_PROPERTIES,
+  PIECE_TYPE_BITS,
+  PIECE_TYPES,
+} from "../../piece/piece.constants.js";
 
 export function composeMagicIdentifier(piece: Piece): string {
   if (hasDiagonalMovement(piece)) {
@@ -57,6 +62,14 @@ export function generateSlidingMagics(
     shifts: data.shifts,
   };
 }
+// generateSlidingMagics(PIECE_TYPES.Bishop | PIECE_PROPERTIES.Diagonal, {
+//   write: true,
+//   read: false,
+// });
+// generateSlidingMagics(PIECE_TYPES.Rook | PIECE_PROPERTIES.Orthogonal, {
+//   write: true,
+//   read: false,
+// });
 
 function writeMagicData(data: MagicData): void {
   const outputDirectory = path.resolve(import.meta.dirname);
