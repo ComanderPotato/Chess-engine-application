@@ -1,4 +1,4 @@
-export const BITBOARD_COUNT = 12;
+export const BITBOARD_COUNT = 12 as const;
 export enum BitboardKey {
   WhitePawn,
   WhiteKnight,

@@ -12,3 +12,11 @@ export type Square = number & { readonly __brand: "Square" };
 export type File = keyof typeof FILES;
 
 export type Rank = keyof typeof RANKS;
+
+export type CastlingRights = number;
+export type EnPassant = Square | null;
+
+export interface SideCastlingRights {
+  canKingSide: boolean;
+  canQueenSide: boolean;
+}

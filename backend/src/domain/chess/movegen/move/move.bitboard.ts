@@ -30,10 +30,18 @@ export function shiftEast(bb: Bitboard): Bitboard {
 export function shiftWest(bb: Bitboard): Bitboard {
   return (bb & NOT_A_FILE_MASK) >> 1n;
 }
-export function shiftRight(bb: Bitboard, n: number, mask: Bitboard): Bitboard {
+export function shiftRight(
+  bb: Bitboard,
+  n: number,
+  mask: Bitboard = BOARD_MASK,
+): Bitboard {
   return ((bb & mask) << BigInt(n)) & BOARD_MASK;
 }
-export function shiftLeft(bb: Bitboard, n: number, mask: Bitboard): Bitboard {
+export function shiftLeft(
+  bb: Bitboard,
+  n: number,
+  mask: Bitboard = BOARD_MASK,
+): Bitboard {
   return (bb & mask) >> BigInt(n);
 }
 // export function shiftRight(bb: Bitboard, n: number) {

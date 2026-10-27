@@ -76,7 +76,7 @@ describe("fen.parser", () => {
     describe(TestFenParser.parsePiecePlacement.name, () => {
       it("parses empty board piece placement", () => {
         const piecePlacement = FENS.EMPTY.split(" ")[0]!;
-        const bitboards = TestFenParser.parsePiecePlacement(piecePlacement);
+        const { bitboards } = TestFenParser.parsePiecePlacement(piecePlacement);
         expect(bitboards.allOccupancy).toBe(0n);
       });
       it("places each piece on the correct bitboard", () => {
@@ -85,7 +85,7 @@ describe("fen.parser", () => {
 
         for (const piece of ALL_PIECES) {
           const notation = pieceToNotation(piece);
-          const bitboards = TestFenParser.parsePiecePlacement(
+          const { bitboards } = TestFenParser.parsePiecePlacement(
             piecePlacement.replace("_", notation),
           );
           expect(bitboards.allOccupancy).toBe(1n << square);
@@ -98,7 +98,7 @@ describe("fen.parser", () => {
         const piece = PIECE_TYPES.Pawn | PIECE_COLOURS.White;
 
         const notation = pieceToNotation(piece);
-        const bitboards = TestFenParser.parsePiecePlacement(
+        const { bitboards } = TestFenParser.parsePiecePlacement(
           piecePlacement.replace("_", notation),
         );
         for (const other of ALL_PIECES) {
@@ -109,7 +109,7 @@ describe("fen.parser", () => {
       it("parses piece placement with correct orientation", () => {
         const piecePlacement = "R6p/8/8/8/8/8/8/q6K";
 
-        const bitboards = TestFenParser.parsePiecePlacement(piecePlacement);
+        const { bitboards } = TestFenParser.parsePiecePlacement(piecePlacement);
 
         expect(
           bitboards.getBitboard(PIECE_TYPES.Queen | PIECE_COLOURS.Black),
@@ -129,7 +129,7 @@ describe("fen.parser", () => {
       });
       it("parses starting position piece placement", () => {
         const piecePlacement = FENS.START.split(" ")[0]!;
-        const bitboards = TestFenParser.parsePiecePlacement(piecePlacement);
+        const { bitboards } = TestFenParser.parsePiecePlacement(piecePlacement);
 
         assertStartingBitboard(bitboards);
       });
@@ -140,6 +140,14 @@ describe("fen.parser", () => {
         expect(() => TestFenParser.parsePiecePlacement("")).toThrow(
           /piece placement/,
         );
+      });
+      it("throws if consecutive backslashs", () => {
+        expect(() =>
+          TestFenParser.parsePiecePlacement("8/8/8/8/8//8/8/8"),
+        ).toThrow(/piece placement/);
+        expect(() =>
+          TestFenParser.parsePiecePlacement("8/8/8/8/8///8/8/8"),
+        ).toThrow(/piece placement/);
       });
       it("throws if there is an invalid character", () => {
         expect(() =>

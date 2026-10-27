@@ -4,9 +4,9 @@ import { BOARD_SIZE, SQUARES } from "@/domain/chess/board/board.constants.js";
 import * as TestAttackMask from "@/domain/chess/movegen/attack/attack.mask.js";
 import * as TestAttackPrecompute from "@/domain/chess/movegen/attack/attack.precompute.js";
 import {
-  BISHOP_MAGICS_PRECOMPUTE,
-  BISHOP_SHIFTS_PRECOMPUTE,
-} from "@/domain/chess/movegen/magic/bishop.magic.js";
+  DIAGONAL_MAGICS_PRECOMPUTE,
+  DIAGONAL_SHIFTS_PRECOMPUTE,
+} from "@/domain/chess/movegen/magic/diagonal.magic.js";
 import { describe, expect, it } from "vitest";
 
 describe("attack.precompute", () => {
@@ -75,8 +75,8 @@ describe("attack.precompute", () => {
       it("precomputes diagonal attack tables for every square", () => {
         const table = TestAttackPrecompute.precomputeSlidingAttackTables(
           TestAttackPrecompute.precomputeDiagonalAttackMasks(),
-          BISHOP_SHIFTS_PRECOMPUTE,
-          BISHOP_MAGICS_PRECOMPUTE,
+          DIAGONAL_SHIFTS_PRECOMPUTE,
+          DIAGONAL_MAGICS_PRECOMPUTE,
           BISHOP_PIECE,
         );
         expect(table).toBeDefined();

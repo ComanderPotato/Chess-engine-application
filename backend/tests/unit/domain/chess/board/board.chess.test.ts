@@ -1,11 +1,22 @@
+import { createBitboardFromCoords } from "#/factories/bitboard.factory.js";
+import { ALL_PIECES } from "#/fixtures/chess/piece.fixtures.js";
 import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
 import { TEST_CATEGORIES } from "#/utils/test-constants.js";
 import { Bitboards } from "@/domain/chess/bitboard/bitboard.chess.js";
 import { Board } from "@/domain/chess/board/board.chess.js";
+import { RANK_MASKS, SQUARES } from "@/domain/chess/board/board.constants.js";
+import { FENS } from "@/domain/chess/fen/fen.constants.js";
+import { Square } from "@/domain/chess/board/types.chess.js";
+import {
+  getColour,
+  getEnemyColour,
+  getType,
+} from "@/domain/chess/piece/piece.chess.js";
 import {
   PIECE_COLOURS,
   PIECE_TYPES,
 } from "@/domain/chess/piece/piece.constants.js";
+import { Piece } from "@/domain/chess/piece/piece.types.js";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("board.chess", () => {
@@ -58,148 +69,431 @@ describe("board.chess", () => {
     });
 
     describe(TEST_CATEGORIES.BITBOARDS, () => {
-      describe("occupancy", () => {
-        it("gets the occupancy", () => {
-          expect(board.occupancy).toBe(0n);
-          expect(typeof board.occupancy).toBe("bigint");
-        });
-      });
-      describe("friendlyOccupancy", () => {
-        it("gets the friendly occupancy", () => {
-          expect(board.friendlyOccupancy).toBe(0n);
-          expect(typeof board.friendlyOccupancy).toBe("bigint");
-        });
-      });
-      describe("enemyOccupancy", () => {
-        it("gets the enemy occupancy", () => {
-          expect(board.enemyOccupancy).toBe(0n);
-          expect(typeof board.enemyOccupancy).toBe("bigint");
-        });
-      });
-      describe("whiteOccupancy", () => {
-        it("gets the white occupancy", () => {
-          expect(board.whiteOccupancy).toBe(0n);
-          expect(typeof board.whiteOccupancy).toBe("bigint");
-        });
-      });
-      describe("blackOccupancy", () => {
-        it("gets the black occupancy", () => {
-          expect(board.blackOccupancy).toBe(0n);
-          expect(typeof board.blackOccupancy).toBe("bigint");
-        });
-      });
-      describe("whiteSlidingOccupancy", () => {
-        it("gets the white sliding occupancy", () => {
-          expect(board.whiteSlidingOccupancy).toBe(0n);
-          expect(typeof board.whiteSlidingOccupancy).toBe("bigint");
-        });
-      });
-      describe("blackSlidingOccupancy", () => {
-        it("gets the white sliding occupancy", () => {
-          expect(board.blackSlidingOccupancy).toBe(0n);
-          expect(typeof board.blackSlidingOccupancy).toBe("bigint");
-        });
-      });
-
-      describe("bitboards", () => {
-        it("returns the bitboards object", () => {
-          expect(board.bitboards).toBeInstanceOf(Bitboards);
-        });
-      });
-      describe("bitboardsList", () => {
-        it("returns an array of bitboards", () => {
-          expect(board.bitboardsList).toBeDefined();
-          expect(board.bitboardsList).toBe(board.bitboards.bitboards);
-          expect(board.bitboardsList).toHaveLength(12);
-        });
-      });
-      describe(Board.prototype.getOccupancy.name, () => {
-        it("returns bitboards of a specific type", () => {
-          expect(board.getOccupancy(PIECE_TYPES.Pawn)).toBe(0n);
-          expect(board.getOccupancy(PIECE_TYPES.Bishop)).toBe(0n);
-          expect(board.getOccupancy(PIECE_TYPES.Queen)).toBe(0n);
-        });
-      });
-      describe(Board.prototype.getBitboard.name, () => {
-        it("gets bitboard of a specific piece", () => {
-          expect(
-            board.getBitboard(PIECE_TYPES.Pawn | PIECE_COLOURS.White),
-          ).toBe(0n);
-          expect(
-            board.getBitboard(PIECE_TYPES.Bishop | PIECE_COLOURS.Black),
-          ).toBe(0n);
-          expect(
-            board.getBitboard(PIECE_TYPES.Queen | PIECE_COLOURS.White),
-          ).toBe(0n);
-        });
-        it("sets bitboard of a specific piece", () => {
-          let piece = PIECE_TYPES.Pawn | PIECE_COLOURS.White;
-          expect(board.getBitboard(piece)).toBe(0n);
-
-          board.setBitboard(piece, COORD_SQUARE_MAP.A1);
-          expect(board.getBitboard(piece)).toBe(0b1n);
-
-          board.setBitboard(piece, COORD_SQUARE_MAP.B1);
-          expect(board.getBitboard(piece)).toBe(0b11n);
-
-          piece = PIECE_TYPES.Bishop | PIECE_COLOURS.Black;
-          expect(board.getBitboard(piece)).toBe(0n);
-
-          board.setBitboard(piece, COORD_SQUARE_MAP.A1);
-          expect(board.getBitboard(piece)).toBe(0b1n);
-        });
-      });
-      describe(Board.prototype.getFriendlyOccupancyFor.name, () => {
-        it("returns friendly occupancy for a specific colour", () => {
-          expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.White)).toBe(0n);
-          expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.Black)).toBe(0n);
-
-          board.setBitboard(
-            PIECE_TYPES.Pawn | PIECE_COLOURS.White,
-            COORD_SQUARE_MAP.A1,
+      describe(TEST_CATEGORIES.CLASSIFICATION, () => {
+        describe(Board.prototype.isSquareOccupiedBy.name, () => {
+          beforeEach(() => {
+            board = new Board(FENS.EMPTY);
+          });
+          it.each([
+            {
+              type: PIECE_TYPES.Pawn,
+              colour: PIECE_COLOURS.White,
+              square: COORD_SQUARE_MAP.A1,
+              checkAgainst: PIECE_TYPES.Bishop | PIECE_COLOURS.Black,
+              name: "white pawn",
+            },
+            {
+              type: PIECE_TYPES.Bishop,
+              colour: PIECE_COLOURS.Black,
+              square: COORD_SQUARE_MAP.G5,
+              checkAgainst: PIECE_TYPES.Knight | PIECE_COLOURS.Black,
+              name: "black bishop",
+            },
+            {
+              type: PIECE_TYPES.Queen,
+              colour: PIECE_COLOURS.White,
+              square: COORD_SQUARE_MAP.C3,
+              checkAgainst: PIECE_TYPES.Knight | PIECE_COLOURS.Black,
+              name: "white queen",
+            },
+            {
+              type: PIECE_TYPES.Rook,
+              colour: PIECE_COLOURS.White,
+              square: COORD_SQUARE_MAP.C3,
+              checkAgainst: PIECE_TYPES.Knight | PIECE_COLOURS.Black,
+              name: "white rook",
+            },
+          ])(
+            "returns expected result when checking $name",
+            ({ type, colour, checkAgainst, square }) => {
+              expect(board.isSquareOccupiedBy(square, type)).toBe(false);
+              board.setPiece(type | colour, square);
+              expect(board.isSquareOccupiedBy(square, type)).toBe(true);
+              expect(board.isSquareOccupiedBy(square, type, colour)).toBe(true);
+              expect(
+                board.isSquareOccupiedBy(square, getType(checkAgainst)),
+              ).toBe(false);
+              expect(
+                board.isSquareOccupiedBy(
+                  square,
+                  getType(checkAgainst),
+                  getColour(checkAgainst),
+                ),
+              ).toBe(false);
+            },
           );
-          expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.White)).toBe(0b1n);
-          expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.Black)).toBe(0n);
-
-          board.setBitboard(
-            PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
-            COORD_SQUARE_MAP.A1,
-          );
-          expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.White)).toBe(0b1n);
-          expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.Black)).toBe(0b1n);
+          it("returns the expected result when checking square occupancy with random piece", () => {
+            for (let i = 0; i < 100; i++) {
+              const randomSquare = Math.floor(
+                Math.random() * SQUARES.length,
+              ) as Square;
+              const randomPiece = ALL_PIECES[
+                Math.floor(Math.random() * ALL_PIECES.length)
+              ] as Piece;
+              const type = getType(randomPiece);
+              const colour = getColour(randomPiece);
+              expect(board.isSquareOccupiedBy(randomSquare, type)).toBe(false);
+              board.setPiece(randomPiece, randomSquare);
+              expect(board.isSquareOccupiedBy(randomSquare, type)).toBe(true);
+              expect(board.isSquareOccupiedBy(randomSquare, type, colour)).toBe(
+                true,
+              );
+              expect(
+                board.isSquareOccupiedBy(
+                  randomSquare,
+                  type,
+                  getEnemyColour(colour),
+                ),
+              ).toBe(false);
+              board.removeBit(randomSquare);
+            }
+          });
         });
       });
-      describe(Board.prototype.getEnemyOccupancyFor.name, () => {
-        it("returns enemy occupancy for a specific colour", () => {
-          expect(board.getEnemyOccupancyFor(PIECE_COLOURS.White)).toBe(0n);
-          expect(board.getEnemyOccupancyFor(PIECE_COLOURS.Black)).toBe(0n);
+      describe(TEST_CATEGORIES.MANIPULATION, () => {
+        beforeEach(() => {
+          board = new Board(FENS.EMPTY);
+        });
+        describe(Board.prototype.setPiece.name, () => {
+          it.each([
+            { to: COORD_SQUARE_MAP.E4, name: "e4" },
+            { to: COORD_SQUARE_MAP.A1, name: "a1" },
+            { to: COORD_SQUARE_MAP.H8, name: "h8" },
+          ])("inserts a pawn at $name", ({ to }) => {
+            const piece = PIECE_TYPES.Pawn | PIECE_COLOURS.White;
+            expect(board.isOccupied(to)).toBe(false);
+            board.setPiece(piece, to);
+            expect(board.isOccupied(to)).toBe(true);
+            expect(board.pieceAt(to)).toBe(
+              PIECE_TYPES.Pawn | PIECE_COLOURS.White,
+            );
+          });
+        });
+        describe(Board.prototype.removeBit.name, () => {
+          it.each([
+            { to: COORD_SQUARE_MAP.E4, name: "e4" },
+            { to: COORD_SQUARE_MAP.A1, name: "a1" },
+            { to: COORD_SQUARE_MAP.H8, name: "h8" },
+          ])("removes the piece at $name", ({ to }) => {
+            const piece = PIECE_TYPES.Pawn | PIECE_COLOURS.White;
 
-          board.setBitboard(
-            PIECE_TYPES.Pawn | PIECE_COLOURS.White,
-            COORD_SQUARE_MAP.A1,
-          );
-          expect(board.getEnemyOccupancyFor(PIECE_COLOURS.Black)).toBe(0b1n);
-          expect(board.getEnemyOccupancyFor(PIECE_COLOURS.White)).toBe(0n);
+            expect(board.isOccupied(to)).toBe(false);
+            board.setPiece(piece, to);
+            expect(board.isOccupied(to)).toBe(true);
+            board.removeBit(to);
+            expect(board.isOccupied(to)).toBe(false);
+          });
+        });
+        describe(Board.prototype.moveBit.name, () => {
+          it.each([
+            {
+              from: COORD_SQUARE_MAP.A2,
+              to: COORD_SQUARE_MAP.A3,
+              name: "a2 to a3",
+            },
+            {
+              from: COORD_SQUARE_MAP.B8,
+              to: COORD_SQUARE_MAP.C8,
+              name: "b8 to c8",
+            },
+            {
+              from: COORD_SQUARE_MAP.A4,
+              to: COORD_SQUARE_MAP.H4,
+              name: "a4 to h4",
+            },
+          ])("moves a piece from $name", ({ from, to }) => {
+            const piece = PIECE_TYPES.Pawn | PIECE_COLOURS.White;
 
-          board.setBitboard(
-            PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
-            COORD_SQUARE_MAP.A1,
-          );
-          expect(board.getEnemyOccupancyFor(PIECE_COLOURS.Black)).toBe(0b1n);
-          expect(board.getEnemyOccupancyFor(PIECE_COLOURS.White)).toBe(0b1n);
+            board.setPiece(piece, from);
+            expect(board.isOccupied(from)).toBe(true);
+            expect(board.isOccupied(to)).toBe(false);
+            board.moveBit(from, to);
+            expect(board.isOccupied(from)).toBe(false);
+            expect(board.isOccupied(to)).toBe(true);
+          });
         });
       });
-      describe(Board.prototype.setBitboards.name, () => {});
-      describe(Board.prototype.setBitboard.name, () => {});
+      describe(TEST_CATEGORIES.EXTRACTION, () => {
+        describe(Board.prototype.isOccupied.name, () => {
+          it("checks occupancy of a specific square", () => {});
+        });
+        describe("occupancy", () => {
+          it("gets the occupancy", () => {
+            expect(board.occupancy).toBe(
+              RANK_MASKS[7]! | RANK_MASKS[6]! | RANK_MASKS[1]! | RANK_MASKS[0]!,
+            );
+          });
+        });
+        describe("friendlyOccupancy", () => {
+          it("gets the friendly occupancy with white as active colour", () => {
+            expect(board.friendlyOccupancy).toBe(
+              RANK_MASKS[1]! | RANK_MASKS[0]!,
+            );
+            expect(board.friendlyOccupancy).toBe(board.whiteOccupancy);
+          });
+          it("gets the friendly occupancy with black as active colour", () => {
+            board.activeColour = PIECE_COLOURS.Black;
+            expect(board.friendlyOccupancy).toBe(
+              RANK_MASKS[6]! | RANK_MASKS[7]!,
+            );
+            expect(board.friendlyOccupancy).toBe(board.blackOccupancy);
+          });
+        });
+        describe("enemyOccupancy", () => {
+          it("gets the enemy occupancy with white as active colour", () => {
+            expect(board.enemyOccupancy).toBe(RANK_MASKS[6]! | RANK_MASKS[7]!);
+            expect(board.enemyOccupancy).toBe(board.blackOccupancy);
+          });
+          it("gets the enemy occupancy with black as active colour", () => {
+            board.activeColour = PIECE_COLOURS.Black;
+            expect(board.enemyOccupancy).toBe(RANK_MASKS[0]! | RANK_MASKS[1]!);
+            expect(board.enemyOccupancy).toBe(board.whiteOccupancy);
+          });
+        });
+        describe("whiteOccupancy", () => {
+          it("gets the white occupancy", () => {
+            expect(board.whiteOccupancy).toBe(RANK_MASKS[1]! | RANK_MASKS[0]!);
+            expect(board.whiteOccupancy).toBe(board.friendlyOccupancy);
+          });
+        });
+        describe("blackOccupancy", () => {
+          it("gets the black occupancy", () => {
+            expect(board.blackOccupancy).toBe(RANK_MASKS[7]! | RANK_MASKS[6]!);
+            expect(board.blackOccupancy).toBe(board.enemyOccupancy);
+          });
+        });
+        describe("whiteSlidingOccupancy", () => {
+          it("gets the white sliding occupancy", () => {
+            expect(board.whiteSlidingOccupancy).toBe(
+              createBitboardFromCoords([
+                COORD_SQUARE_MAP.A1,
+                COORD_SQUARE_MAP.C1,
+                COORD_SQUARE_MAP.D1,
+                COORD_SQUARE_MAP.F1,
+                COORD_SQUARE_MAP.H1,
+              ]),
+            );
+          });
+          it("gets the white sliding occupancy from the white sliding pieces", () => {
+            const expected =
+              board.getBitboard(PIECE_TYPES.Bishop | PIECE_COLOURS.White) |
+              board.getBitboard(PIECE_TYPES.Rook | PIECE_COLOURS.White) |
+              board.getBitboard(PIECE_TYPES.Queen | PIECE_COLOURS.White);
+            expect(board.whiteSlidingOccupancy).toBe(expected);
+          });
+        });
+        describe("blackSlidingOccupancy", () => {
+          it("gets the white sliding occupancy", () => {
+            expect(board.blackSlidingOccupancy).toBe(
+              createBitboardFromCoords([
+                COORD_SQUARE_MAP.A8,
+                COORD_SQUARE_MAP.C8,
+                COORD_SQUARE_MAP.D8,
+                COORD_SQUARE_MAP.F8,
+                COORD_SQUARE_MAP.H8,
+              ]),
+            );
+          });
+          it("gets the black sliding occupancy from the black sliding pieces", () => {
+            const expected =
+              board.getBitboard(PIECE_TYPES.Bishop | PIECE_COLOURS.Black) |
+              board.getBitboard(PIECE_TYPES.Rook | PIECE_COLOURS.Black) |
+              board.getBitboard(PIECE_TYPES.Queen | PIECE_COLOURS.Black);
+            expect(board.blackSlidingOccupancy).toBe(expected);
+          });
+        });
+
+        describe("bitboards", () => {
+          it("returns the bitboards object", () => {
+            expect(board.bitboards).toBeInstanceOf(Bitboards);
+          });
+        });
+        describe("bitboardsList", () => {
+          it("returns an array of bitboards", () => {
+            expect(board.bitboardsList).toBeDefined();
+            expect(board.bitboardsList).toBe(board.bitboards.bitboards);
+            expect(board.bitboardsList).toHaveLength(12);
+          });
+        });
+        describe(Board.prototype.getOccupancy.name, () => {
+          it("returns bitboards of a specific type", () => {
+            expect(board.getOccupancy(PIECE_TYPES.Pawn)).toBe(
+              RANK_MASKS[1]! | RANK_MASKS[6]!,
+            );
+            expect(board.getOccupancy(PIECE_TYPES.Bishop)).toBe(
+              createBitboardFromCoords([
+                COORD_SQUARE_MAP.C1,
+                COORD_SQUARE_MAP.F1,
+                COORD_SQUARE_MAP.C8,
+                COORD_SQUARE_MAP.F8,
+              ]),
+            );
+            expect(board.getOccupancy(PIECE_TYPES.Queen)).toBe(
+              createBitboardFromCoords([
+                COORD_SQUARE_MAP.D1,
+                COORD_SQUARE_MAP.D8,
+              ]),
+            );
+          });
+        });
+        describe(Board.prototype.getBitboard.name, () => {
+          it("gets bitboard of a specific piece", () => {
+            expect(
+              board.getBitboard(PIECE_TYPES.Pawn | PIECE_COLOURS.White),
+            ).toBe(RANK_MASKS[1]);
+            expect(
+              board.getBitboard(PIECE_TYPES.Bishop | PIECE_COLOURS.Black),
+            ).toBe(
+              createBitboardFromCoords([
+                COORD_SQUARE_MAP.C8,
+                COORD_SQUARE_MAP.F8,
+              ]),
+            );
+            expect(
+              board.getBitboard(PIECE_TYPES.Queen | PIECE_COLOURS.White),
+            ).toBe(createBitboardFromCoords([COORD_SQUARE_MAP.D1]));
+          });
+        });
+        describe(Board.prototype.getFriendlyOccupancyFor.name, () => {
+          it("returns friendly occupancy for a specific colour", () => {
+            const whiteBoard = RANK_MASKS[0]! | RANK_MASKS[1]!;
+            const blackBoard = RANK_MASKS[6]! | RANK_MASKS[7]!;
+            expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.White)).toBe(
+              whiteBoard,
+            );
+            expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.Black)).toBe(
+              blackBoard,
+            );
+
+            board.setBitboard(
+              PIECE_TYPES.Pawn | PIECE_COLOURS.White,
+              COORD_SQUARE_MAP.A3,
+            );
+            expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.White)).toBe(
+              (1n << BigInt(COORD_SQUARE_MAP.A3)) | whiteBoard,
+            );
+            expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.Black)).toBe(
+              blackBoard,
+            );
+
+            board.setBitboard(
+              PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
+              COORD_SQUARE_MAP.A5,
+            );
+            expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.White)).toBe(
+              (1n << BigInt(COORD_SQUARE_MAP.A3)) | whiteBoard,
+            );
+            expect(board.getFriendlyOccupancyFor(PIECE_COLOURS.Black)).toBe(
+              (1n << BigInt(COORD_SQUARE_MAP.A5)) | blackBoard,
+            );
+          });
+        });
+        describe(Board.prototype.getEnemyOccupancyFor.name, () => {
+          it("returns enemy occupancy for a specific colour", () => {
+            const whiteBoard = RANK_MASKS[0]! | RANK_MASKS[1]!;
+            const blackBoard = RANK_MASKS[6]! | RANK_MASKS[7]!;
+            expect(board.getEnemyOccupancyFor(PIECE_COLOURS.White)).toBe(
+              blackBoard,
+            );
+            expect(board.getEnemyOccupancyFor(PIECE_COLOURS.Black)).toBe(
+              whiteBoard,
+            );
+
+            board.setBitboard(
+              PIECE_TYPES.Pawn | PIECE_COLOURS.White,
+              COORD_SQUARE_MAP.A3,
+            );
+            expect(board.getEnemyOccupancyFor(PIECE_COLOURS.Black)).toBe(
+              (1n << BigInt(COORD_SQUARE_MAP.A3)) | whiteBoard,
+            );
+            expect(board.getEnemyOccupancyFor(PIECE_COLOURS.White)).toBe(
+              blackBoard,
+            );
+
+            board.setBitboard(
+              PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
+              COORD_SQUARE_MAP.A5,
+            );
+            expect(board.getEnemyOccupancyFor(PIECE_COLOURS.Black)).toBe(
+              (1n << BigInt(COORD_SQUARE_MAP.A3)) | whiteBoard,
+            );
+            expect(board.getEnemyOccupancyFor(PIECE_COLOURS.White)).toBe(
+              (1n << BigInt(COORD_SQUARE_MAP.A5)) | blackBoard,
+            );
+          });
+        });
+      });
+      describe(Board.prototype.getKingSquare.name, () => {
+        it("returns the correct starting position for the white king", () => {
+          expect(board.getKingSquare(PIECE_COLOURS.White)).toBe(
+            COORD_SQUARE_MAP.E1,
+          );
+        });
+        it("returns the correct starting position for the black king", () => {
+          expect(board.getKingSquare(PIECE_COLOURS.Black)).toBe(
+            COORD_SQUARE_MAP.E8,
+          );
+        });
+        it.each([
+          { colour: PIECE_COLOURS.White, name: "white" },
+          { colour: PIECE_COLOURS.Black, name: "black" },
+        ])(
+          "returns the correct square for each $name king position",
+          ({ colour }) => {
+            board = new Board(FENS.EMPTY);
+            for (const square of SQUARES) {
+              board.setPiece(PIECE_TYPES.King | colour, square);
+              expect(board.getKingSquare(colour)).toBe(square);
+              board.removeBit(square);
+            }
+          },
+        );
+      });
+      describe.todo(Board.prototype.setBitboards.name, () => {});
+      describe.todo(Board.prototype.setBitboard.name, () => {});
     });
 
     describe(TEST_CATEGORIES.PIECES, () => {
-      describe(Board.prototype.pieceAt.name, () => {});
-      describe(Board.prototype.movePiece.name, () => {});
+      describe(Board.prototype.pieceAt.name, () => {
+        it("returns the correct piece for a given square", () => {
+          expect(board.pieceAt(COORD_SQUARE_MAP.A2)).toBe(
+            PIECE_TYPES.Pawn | PIECE_COLOURS.White,
+          );
+          expect(board.pieceAt(COORD_SQUARE_MAP.A7)).toBe(
+            PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
+          );
+          expect(board.pieceAt(COORD_SQUARE_MAP.D1)).toBe(
+            PIECE_TYPES.Queen | PIECE_COLOURS.White,
+          );
+          expect(board.pieceAt(COORD_SQUARE_MAP.D8)).toBe(
+            PIECE_TYPES.Queen | PIECE_COLOURS.Black,
+          );
+        });
+      });
     });
 
-    describe("turn", () => {
-      describe(Board.prototype.toggleActiveColour.name, () => {});
+    describe(TEST_CATEGORIES.TURN, () => {
+      describe.todo(Board.prototype.updateBoardState.name, () => {});
+    });
+    describe(TEST_CATEGORIES.CONVERSION, () => {
+      describe(Board.prototype.toFen.name, () => {
+        it("outputs the correct fen string for each creation of the board", () => {
+          for (const fen of Object.values(FENS)) {
+            const newBoard = new Board(fen);
+            expect(newBoard.toFen()).toBe(fen);
+          }
+        });
+      });
+    });
+    describe(TEST_CATEGORIES.PARSING, () => {
+      describe(Board.prototype.loadFen.name, () => {
+        it("loads the fen string and outputs correct fen", () => {
+          for (const fen of Object.values(FENS)) {
+            board.loadFen(fen);
+            expect(board.toFen()).toBe(fen);
+          }
+        });
+      });
     });
   });
 });

@@ -1,127 +1,381 @@
-import { TEST_CATEGORIES } from "#/utils/test-constants.js";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import * as TestMoveUtils from "@/domain/chess/utils/move.utils.js";
+import { TEST_CATEGORIES } from "#/utils/test-constants.js";
+import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
+import { Board } from "@/domain/chess/board/board.chess.js";
 import {
-  Move,
+  PIECE_COLOURS,
+  PIECE_TYPES,
+} from "@/domain/chess/piece/piece.constants.js";
+import { FENS } from "@/domain/chess/fen/fen.constants.js";
+import * as MoveChess from "@/domain/chess/movegen/move/move.chess.js";
+import {
   MOVE_FLAGS,
-  MoveFlag,
-} from "@/domain/chess/movegen/move/move.types.js";
-import { Square } from "@/domain/chess/board/types.chess.js";
-import { SQUARES } from "@/domain/chess/board/board.constants.js";
-import { MOVE_MASK } from "@/domain/chess/movegen/move/move.constants.js";
+  PROMOTION_CAPTURE_FLAGS,
+  PROMOTION_FLAGS,
+} from "@/domain/chess/movegen/move/move.constants.js";
+import { Move } from "@/domain/chess/movegen/move/move.types.js";
 
 describe("move.utils", () => {
-  let move: Move;
-  let from: Square;
-  let to: Square;
-  let flag: MoveFlag;
-  beforeEach(() => {
-    from = 0 as Square;
-    to = 10 as Square;
-    flag = MOVE_FLAGS.Quiet;
-    move = TestMoveUtils.createMove(from, to, flag);
-  });
-  describe(TEST_CATEGORIES.CREATION, () => {
-    it("creates a valid move", () => {
-      expect(Number.isInteger(move)).toBe(true);
-      expect(move).toBeGreaterThanOrEqual(0);
-      expect(move).toBeLessThanOrEqual(MOVE_MASK);
-    });
-  });
-  describe(TEST_CATEGORIES.EXTRACTION, () => {
-    describe(TestMoveUtils.getFrom.name, () => {
-      it("gets the from square from the move", () => {
-        expect(TestMoveUtils.getFrom(move)).toBe(from);
+  describe(TEST_CATEGORIES.CONVERSION, () => {
+    describe(TestMoveUtils.encodePawnMove.name, () => {
+      it("returns a single move with the quiet flag", () => {
+        const board = new Board(FENS.EMPTY);
+        board.setPiece(
+          PIECE_TYPES.Pawn | PIECE_COLOURS.White,
+          COORD_SQUARE_MAP.A2,
+        );
+        const moves: Move[] = [];
+        TestMoveUtils.encodePawnMove({
+          board,
+          from: COORD_SQUARE_MAP.A2,
+          to: COORD_SQUARE_MAP.A3,
+          moves,
+        });
+        expect(moves).toHaveLength(1);
+        expect(MoveChess.getFlag(moves[0]!)).toBe(MOVE_FLAGS.Quiet);
+      });
+      it("returns a single move with the double pawn push flag", () => {
+        const board = new Board(FENS.EMPTY);
+        board.setPiece(
+          PIECE_TYPES.Pawn | PIECE_COLOURS.White,
+          COORD_SQUARE_MAP.A2,
+        );
+        const moves: Move[] = [];
+        TestMoveUtils.encodePawnMove({
+          board,
+          from: COORD_SQUARE_MAP.A2,
+          to: COORD_SQUARE_MAP.A4,
+          moves,
+        });
+        expect(moves).toHaveLength(1);
+        expect(MoveChess.getFlag(moves[0]!)).toBe(MOVE_FLAGS.DoublePawnPush);
+      });
+      it("returns a single move with the capture flag", () => {
+        const board = new Board(FENS.EMPTY);
+        board.setPiece(
+          PIECE_TYPES.Pawn | PIECE_COLOURS.White,
+          COORD_SQUARE_MAP.A2,
+        );
+        board.setPiece(
+          PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
+          COORD_SQUARE_MAP.B3,
+        );
+        const moves: Move[] = [];
+        TestMoveUtils.encodePawnMove({
+          board,
+          from: COORD_SQUARE_MAP.A2,
+          to: COORD_SQUARE_MAP.B3,
+          moves,
+        });
+        expect(moves).toHaveLength(1);
+        expect(MoveChess.getFlag(moves[0]!)).toBe(MOVE_FLAGS.Capture);
+      });
+      it("returns a single move with the enpassant flag", () => {
+        const board = new Board(FENS.EMPTY);
+        board.setPiece(
+          PIECE_TYPES.Pawn | PIECE_COLOURS.White,
+          COORD_SQUARE_MAP.A2,
+        );
+        board.setPiece(
+          PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
+          COORD_SQUARE_MAP.B2,
+        );
+        board.enPassant = COORD_SQUARE_MAP.B3;
+        const moves: Move[] = [];
+        TestMoveUtils.encodePawnMove({
+          board,
+          from: COORD_SQUARE_MAP.A2,
+          to: COORD_SQUARE_MAP.B3,
+          moves,
+        });
+        expect(moves).toHaveLength(1);
+        expect(MoveChess.getFlag(moves[0]!)).toBe(MOVE_FLAGS.EnPassantCapture);
+      });
+      it("returns four moves with the promotion flag", () => {
+        const board = new Board(FENS.EMPTY);
+        board.setPiece(
+          PIECE_TYPES.Pawn | PIECE_COLOURS.White,
+          COORD_SQUARE_MAP.A7,
+        );
+        const moves: Move[] = [];
+        TestMoveUtils.encodePawnMove({
+          board,
+          from: COORD_SQUARE_MAP.A7,
+          to: COORD_SQUARE_MAP.A8,
+          moves,
+        });
+        expect(moves).toHaveLength(4);
+        moves.forEach((move, index) => {
+          expect(MoveChess.getFlag(move)).toBe(PROMOTION_FLAGS[index]);
+        });
+      });
+      it("returns four moves with the promotion capture flag", () => {
+        const board = new Board(FENS.EMPTY);
+        board.setPiece(
+          PIECE_TYPES.Pawn | PIECE_COLOURS.White,
+          COORD_SQUARE_MAP.A7,
+        );
+        board.setPiece(
+          PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
+          COORD_SQUARE_MAP.B8,
+        );
+        const moves: Move[] = [];
+        TestMoveUtils.encodePawnMove({
+          board,
+          from: COORD_SQUARE_MAP.A7,
+          to: COORD_SQUARE_MAP.B8,
+          moves,
+        });
+        expect(moves).toHaveLength(4);
+        moves.forEach((move, index) => {
+          expect(MoveChess.getFlag(move)).toBe(PROMOTION_CAPTURE_FLAGS[index]);
+        });
       });
     });
-    describe(TestMoveUtils.getTo.name, () => {
-      it("gets the to square from the move", () => {
-        expect(TestMoveUtils.getTo(move)).toBe(to);
+    describe(TestMoveUtils.encodeStandardMove.name, () => {
+      it("returns a single move with the quiet flag", () => {
+        const board = new Board(FENS.EMPTY);
+        board.setPiece(
+          PIECE_TYPES.Bishop | PIECE_COLOURS.White,
+          COORD_SQUARE_MAP.A2,
+        );
+        const moves: Move[] = [];
+        TestMoveUtils.encodeStandardMove({
+          board,
+          from: COORD_SQUARE_MAP.A2,
+          to: COORD_SQUARE_MAP.B3,
+          moves,
+        });
+        expect(moves).toHaveLength(1);
+        expect(MoveChess.getFlag(moves[0]!)).toBe(MOVE_FLAGS.Quiet);
       });
-    });
-    describe(TestMoveUtils.getFlag.name, () => {
-      it("gets the flag from the move", () => {
-        expect(TestMoveUtils.getFlag(move)).toBe(flag);
+      it("returns a single move with the capture flag", () => {
+        const board = new Board(FENS.EMPTY);
+        board.setPiece(
+          PIECE_TYPES.Bishop | PIECE_COLOURS.White,
+          COORD_SQUARE_MAP.A2,
+        );
+        board.setPiece(
+          PIECE_TYPES.Pawn | PIECE_COLOURS.Black,
+          COORD_SQUARE_MAP.B3,
+        );
+        const moves: Move[] = [];
+        TestMoveUtils.encodeStandardMove({
+          board,
+          from: COORD_SQUARE_MAP.A2,
+          to: COORD_SQUARE_MAP.B3,
+          moves,
+        });
+        expect(moves).toHaveLength(1);
+        expect(MoveChess.getFlag(moves[0]!)).toBe(MOVE_FLAGS.Capture);
       });
     });
   });
-  describe(TEST_CATEGORIES.INSERTION, () => {
-    describe(TestMoveUtils.setFrom.name, () => {
-      it("sets the from square of a move", () => {
-        let prev = from;
-        for (const square of SQUARES) {
-          expect(TestMoveUtils.getFrom(move)).toBe(prev);
-          prev = square;
-          move = TestMoveUtils.setFrom(move, square);
-          expect(TestMoveUtils.getFrom(move)).toBe(square);
+  describe(TEST_CATEGORIES.CLASSIFICATION, () => {
+    describe(TestMoveUtils.isCastlingMove.name, () => {
+      it("returns true for a castle move", () => {
+        const castleFlags = [MOVE_FLAGS.KingCastle, MOVE_FLAGS.QueenCastle];
+        for (const flag of castleFlags) {
+          const move = MoveChess.createMove(
+            COORD_SQUARE_MAP.A1,
+            COORD_SQUARE_MAP.A2,
+            flag,
+          );
+          expect(TestMoveUtils.isCastlingMove(move)).toBe(true);
+        }
+      });
+      it("returns false for a non castle move", () => {
+        const nonCastleFlags = [
+          MOVE_FLAGS.Quiet,
+          MOVE_FLAGS.DoublePawnPush,
+          MOVE_FLAGS.KnightPromotion,
+          MOVE_FLAGS.BishopPromotion,
+          MOVE_FLAGS.RookPromotion,
+          MOVE_FLAGS.QueenPromotion,
+          MOVE_FLAGS.Capture,
+          MOVE_FLAGS.EnPassantCapture,
+          MOVE_FLAGS.KnightPromotionCapture,
+          MOVE_FLAGS.BishopPromotionCapture,
+          MOVE_FLAGS.RookPromotionCapture,
+          MOVE_FLAGS.QueenPromotionCapture,
+        ];
+        for (const flag of nonCastleFlags) {
+          const move = MoveChess.createMove(
+            COORD_SQUARE_MAP.A1,
+            COORD_SQUARE_MAP.A2,
+            flag,
+          );
+          expect(TestMoveUtils.isCastlingMove(move)).toBe(false);
         }
       });
     });
-    describe(TestMoveUtils.setTo.name, () => {
-      it("sets the to square of a move", () => {
-        let prev = to;
-        for (const square of SQUARES) {
-          expect(TestMoveUtils.getTo(move)).toBe(prev);
-          prev = square;
-          move = TestMoveUtils.setTo(move, square);
-          expect(TestMoveUtils.getTo(move)).toBe(square);
+    describe(TestMoveUtils.isCastlingFlag.name, () => {
+      it("returns true for a castle flag", () => {
+        const castleFlags = [MOVE_FLAGS.KingCastle, MOVE_FLAGS.QueenCastle];
+        for (const flag of castleFlags) {
+          expect(TestMoveUtils.isCastlingFlag(flag)).toBe(true);
+        }
+      });
+      it("returns false for a non castle flag", () => {
+        const nonCastleFlags = [
+          MOVE_FLAGS.Quiet,
+          MOVE_FLAGS.DoublePawnPush,
+          MOVE_FLAGS.KnightPromotion,
+          MOVE_FLAGS.BishopPromotion,
+          MOVE_FLAGS.RookPromotion,
+          MOVE_FLAGS.QueenPromotion,
+          MOVE_FLAGS.Capture,
+          MOVE_FLAGS.EnPassantCapture,
+          MOVE_FLAGS.KnightPromotionCapture,
+          MOVE_FLAGS.BishopPromotionCapture,
+          MOVE_FLAGS.RookPromotionCapture,
+          MOVE_FLAGS.QueenPromotionCapture,
+        ];
+        for (const flag of nonCastleFlags) {
+          expect(TestMoveUtils.isCastlingFlag(flag)).toBe(false);
         }
       });
     });
-    describe(TestMoveUtils.setFlag.name, () => {
-      it("sets the flag of a move", () => {
-        let prev = flag;
-        for (const newFlag of Object.values(MOVE_FLAGS)) {
-          expect(TestMoveUtils.getFlag(move)).toBe(prev);
-          prev = newFlag;
-          move = TestMoveUtils.setFlag(move, newFlag);
-          expect(TestMoveUtils.getFlag(move)).toBe(newFlag);
+    describe(TestMoveUtils.isCaptureMove.name, () => {
+      it("returns true for a capture move", () => {
+        const captureFlags = [
+          MOVE_FLAGS.Capture,
+          MOVE_FLAGS.EnPassantCapture,
+          MOVE_FLAGS.KnightPromotionCapture,
+          MOVE_FLAGS.BishopPromotionCapture,
+          MOVE_FLAGS.RookPromotionCapture,
+          MOVE_FLAGS.QueenPromotionCapture,
+        ];
+        for (const flag of captureFlags) {
+          const move = MoveChess.createMove(
+            COORD_SQUARE_MAP.A1,
+            COORD_SQUARE_MAP.A2,
+            flag,
+          );
+          expect(TestMoveUtils.isCaptureMove(move)).toBe(true);
+        }
+      });
+      it("returns false for a non capture move", () => {
+        const nonCaptureFlags = [
+          MOVE_FLAGS.Quiet,
+          MOVE_FLAGS.DoublePawnPush,
+          MOVE_FLAGS.KingCastle,
+          MOVE_FLAGS.QueenCastle,
+          MOVE_FLAGS.KnightPromotion,
+          MOVE_FLAGS.BishopPromotion,
+          MOVE_FLAGS.RookPromotion,
+          MOVE_FLAGS.QueenPromotion,
+        ];
+        for (const flag of nonCaptureFlags) {
+          const move = MoveChess.createMove(
+            COORD_SQUARE_MAP.A1,
+            COORD_SQUARE_MAP.A2,
+            flag,
+          );
+          expect(TestMoveUtils.isCaptureMove(move)).toBe(false);
         }
       });
     });
-  });
-  describe(TEST_CATEGORIES.VALIDATION, () => {
-    describe(TestMoveUtils.isValidMove.name, () => {
-      it("returns true when a move is valid", () => {
-        expect(TestMoveUtils.isValidMove(move)).toBe(true);
+    describe(TestMoveUtils.isCaptureFlag.name, () => {
+      it("returns true for a capture flag", () => {
+        const captureFlags = [
+          MOVE_FLAGS.Capture,
+          MOVE_FLAGS.EnPassantCapture,
+          MOVE_FLAGS.KnightPromotionCapture,
+          MOVE_FLAGS.BishopPromotionCapture,
+          MOVE_FLAGS.RookPromotionCapture,
+          MOVE_FLAGS.QueenPromotionCapture,
+        ];
+        for (const flag of captureFlags) {
+          expect(TestMoveUtils.isCaptureFlag(flag)).toBe(true);
+        }
       });
-      it("returns false with invalid input", () => {
-        expect(TestMoveUtils.isValidMove(-1)).toBe(false);
-        expect(TestMoveUtils.isValidMove(MOVE_MASK << 1)).toBe(false);
+      it("returns false for a non capture move", () => {
+        const nonCaptureFlags = [
+          MOVE_FLAGS.Quiet,
+          MOVE_FLAGS.DoublePawnPush,
+          MOVE_FLAGS.KingCastle,
+          MOVE_FLAGS.QueenCastle,
+          MOVE_FLAGS.KnightPromotion,
+          MOVE_FLAGS.BishopPromotion,
+          MOVE_FLAGS.RookPromotion,
+          MOVE_FLAGS.QueenPromotion,
+        ];
+        for (const flag of nonCaptureFlags) {
+          expect(TestMoveUtils.isCaptureFlag(flag)).toBe(false);
+        }
       });
     });
-    describe(TestMoveUtils.hasValidFrom.name, () => {
-      it("returns true for a moves valid from", () => {
-        expect(TestMoveUtils.hasValidFrom(move)).toBe(true);
+    describe(TestMoveUtils.isPromotionMove.name, () => {
+      it("returns true for a promotion move", () => {
+        const promotionFlags = [
+          MOVE_FLAGS.KnightPromotion,
+          MOVE_FLAGS.BishopPromotion,
+          MOVE_FLAGS.RookPromotion,
+          MOVE_FLAGS.QueenPromotion,
+          MOVE_FLAGS.KnightPromotionCapture,
+          MOVE_FLAGS.BishopPromotionCapture,
+          MOVE_FLAGS.RookPromotionCapture,
+          MOVE_FLAGS.QueenPromotionCapture,
+        ];
+        for (const flag of promotionFlags) {
+          const move = MoveChess.createMove(
+            COORD_SQUARE_MAP.A1,
+            COORD_SQUARE_MAP.A2,
+            flag,
+          );
+          expect(TestMoveUtils.isPromotionMove(move)).toBe(true);
+        }
+      });
+      it("returns false for a non promotion move", () => {
+        const nonPromotionFlags = [
+          MOVE_FLAGS.Quiet,
+          MOVE_FLAGS.DoublePawnPush,
+          MOVE_FLAGS.Capture,
+          MOVE_FLAGS.EnPassantCapture,
+          MOVE_FLAGS.KingCastle,
+          MOVE_FLAGS.QueenCastle,
+        ];
+        for (const flag of nonPromotionFlags) {
+          const move = MoveChess.createMove(
+            COORD_SQUARE_MAP.A1,
+            COORD_SQUARE_MAP.A2,
+            flag,
+          );
+          expect(TestMoveUtils.isPromotionMove(move)).toBe(false);
+        }
       });
     });
-    describe(TestMoveUtils.hasValidTo.name, () => {
-      it("returns true for a moves valid to", () => {
-        expect(TestMoveUtils.hasValidTo(move)).toBe(true);
+    describe(TestMoveUtils.isPromotionFlag.name, () => {
+      it("returns true for a promotion flag", () => {
+        const promotionFlags = [
+          MOVE_FLAGS.KnightPromotion,
+          MOVE_FLAGS.BishopPromotion,
+          MOVE_FLAGS.RookPromotion,
+          MOVE_FLAGS.QueenPromotion,
+          MOVE_FLAGS.KnightPromotionCapture,
+          MOVE_FLAGS.BishopPromotionCapture,
+          MOVE_FLAGS.RookPromotionCapture,
+          MOVE_FLAGS.QueenPromotionCapture,
+        ];
+        for (const flag of promotionFlags) {
+          expect(TestMoveUtils.isPromotionFlag(flag)).toBe(true);
+        }
       });
-    });
-    describe(TestMoveUtils.hasValidFlag.name, () => {
-      it("returns true for a moves valid flag", () => {
-        expect(TestMoveUtils.hasValidFlag(move)).toBe(true);
+      it("returns false for a non promotion flag", () => {
+        const nonPromotionFlags = [
+          MOVE_FLAGS.Quiet,
+          MOVE_FLAGS.DoublePawnPush,
+          MOVE_FLAGS.Capture,
+          MOVE_FLAGS.EnPassantCapture,
+          MOVE_FLAGS.KingCastle,
+          MOVE_FLAGS.QueenCastle,
+        ];
+        for (const flag of nonPromotionFlags) {
+          expect(TestMoveUtils.isPromotionFlag(flag)).toBe(false);
+        }
       });
     });
   });
 });
-// describe(TEST_CATEGORIES.CREATION, () => {
-//   describe(TestMoveUtils.createMove.name, () => {
-//     it("creates a valid move", () => {
-//       for (const from of SQUARES) {
-//         for (const to of SQUARES) {
-//           for (const flag of Object.values(MOVE_FLAGS)) {
-//             const move = TestMoveUtils.createMove(from, to, flag);
-//
-//             expect(TestMoveUtils.getFrom(move)).toBe(from);
-//             expect(TestMoveUtils.getTo(move)).toBe(to);
-//             expect(TestMoveUtils.getFlag(move)).toBe(flag);
-//             expect(move & ~MOVE_MASK).toBe(0);
-//           }
-//         }
-//       }
-//     });
-//   });
-// });

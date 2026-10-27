@@ -52,4 +52,8 @@ export const TEST_CATEGORIES = {
   PROPERTIES: "Properties",
   INTEGRATION: "Integration",
   CREATION: "Creation",
+
+  TURN: "Turn",
+
+  UNCATEGORISED: "Uncategorised",
 };

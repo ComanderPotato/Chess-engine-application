@@ -1,5 +1,6 @@
-import { Board, CastlingRights, EnPassant } from "../board/board.chess.js";
+import { Board } from "../board/board.chess.js";
 import { RANKS, FILES } from "../board/board.constants.js";
+import { CastlingRights, EnPassant } from "../board/types.chess.js";
 import { PIECE_COLOURS, PIECE_TYPES } from "../piece/piece.constants.js";
 import { pieceToNotation } from "../piece/piece.notation.js";
 import { PieceColour } from "../piece/piece.types.js";

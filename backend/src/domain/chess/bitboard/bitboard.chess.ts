@@ -1,25 +1,53 @@
 import { Bitboard, ReadonlyBitboards, Square } from "../board/types.chess.js";
 import { isWhite } from "../piece/piece.chess.js";
-import { PIECE_COLOURS as PieceColourConstants } from "../piece/piece.constants.js";
+import { PIECE_COLOURS } from "../piece/piece.constants.js";
 import { Piece, PieceColour, PieceType } from "../piece/piece.types.js";
-import { clearBit64, setBit64 } from "../utils/bit.utils.js";
+import * as BitUtils from "../utils/bit.utils.js";
 import { pieceToIndex } from "../utils/bitboard.utils.js";
 import { BITBOARD_COUNT, BitboardKey } from "./bitboard.constants.js";
+
 export class Bitboards {
   private _bitboards: Bitboard[] = new Array(BITBOARD_COUNT).fill(0n);
 
-  public moveBit(piece: Piece, from: Square, to: Square): void {
-    const index = pieceToIndex(piece);
-    this._bitboards[index]! ^= (1n << BigInt(to)) | (1n << BigInt(from));
-    // return this._bitboards[index]!;
+  constructor(bitboards: Bitboard[] = new Array(BITBOARD_COUNT).fill(0n)) {
+    this._bitboards = bitboards;
   }
-  public setBit(piece: Piece, square: Square): void {
-    const idx = pieceToIndex(piece);
-    this._bitboards[idx]! = setBit64(this._bitboards[idx]!, square);
+  public isOccupied(at: Square): boolean {
+    return BitUtils.isBitSet64(this.allOccupancy, at);
   }
-  public clearBit(piece: Piece, square: Square): void {
+  public moveBit(from: Square, to: Square): void {
+    if (!BitUtils.isBitSet64(this.allOccupancy, from)) return;
+    const idx = this.findOccupiedBitboardIndex(from);
+    this._bitboards[idx]! ^= (1n << BigInt(to)) | (1n << BigInt(from));
+  }
+  public movePieceBit(piece: Piece, from: Square, to: Square): void {
     const idx = pieceToIndex(piece);
-    this._bitboards[idx]! = clearBit64(this._bitboards[idx]!, square);
+    if (!BitUtils.isBitSet64(this._bitboards[idx]!, from)) return;
+    this._bitboards[idx]! ^= (1n << BigInt(to)) | (1n << BigInt(from));
+  }
+  public setPieceBit(piece: Piece, square: Square): void {
+    if (BitUtils.isBitSet64(this.allOccupancy, square)) return;
+    const idx = pieceToIndex(piece);
+    this._bitboards[idx]! = BitUtils.setBit64(this._bitboards[idx]!, square);
+  }
+  public clearBit(square: Square): void {
+    if (!BitUtils.isBitSet64(this.allOccupancy, square)) return;
+    const idx = this.findOccupiedBitboardIndex(square);
+    this._bitboards[idx]! = BitUtils.clearBit64(this._bitboards[idx]!, square);
+  }
+  public clearPieceBit(piece: Piece, square: Square): void {
+    if (!BitUtils.isBitSet64(this.allOccupancy, square)) return;
+    const idx = pieceToIndex(piece);
+    this._bitboards[idx]! = BitUtils.clearBit64(this._bitboards[idx]!, square);
+  }
+  public findOccupiedBitboardIndex(square: Square): number {
+    let [start, end] = BitUtils.isBitSet64(this.whiteOccupancy, square)
+      ? [0, 6]
+      : [6, 12];
+    for (; start < end; start++) {
+      if (BitUtils.isBitSet64(this._bitboards[start]!, square)) return start;
+    }
+    throw new Error("Unable to find bitboard index for occupied square");
   }
 
   public getBitboard(piece: Piece): Bitboard {
@@ -30,17 +58,18 @@ export class Bitboards {
   }
   public getOccupancy(type: PieceType) {
     return (
-      this._bitboards[pieceToIndex(type | PieceColourConstants.Black)]! |
-      this._bitboards[pieceToIndex(type | PieceColourConstants.White)]!
+      this._bitboards[pieceToIndex(type | PIECE_COLOURS.Black)]! |
+      this._bitboards[pieceToIndex(type | PIECE_COLOURS.White)]!
     );
   }
+
   public getFriendlyOccupancyFor(colour: PieceColour) {
     return isWhite(colour) ? this.whiteOccupancy : this.blackOccupancy;
   }
-
   public getEnemyOccupancyFor(colour: PieceColour) {
     return isWhite(colour) ? this.blackOccupancy : this.whiteOccupancy;
   }
+
   public get allOccupancy(): Bitboard {
     return this.whiteOccupancy | this.blackOccupancy;
   }
@@ -79,5 +108,3 @@ export class Bitboards {
     );
   }
 }
-
-type BitboardKeys = keyof Bitboards;

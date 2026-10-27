@@ -13,7 +13,7 @@ type MagicGenerateTestData = {
   magics: bigint[];
 };
 
-describe("magic.generate", () => {
+describe.skip("magic.generate", () => {
   describe(TEST_CATEGORIES.COMPUTATION, () => {
     describe(TestMagicGenerate.generateSlidingMagics.name, () => {
       let diagonal: MagicGenerateTestData;

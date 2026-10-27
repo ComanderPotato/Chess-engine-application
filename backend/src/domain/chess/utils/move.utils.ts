@@ -1,82 +1,125 @@
-import { Square } from "../board/types.chess.js";
+import { Board } from "../board/board.chess.js";
+import { RANK_MASKS, RANKS } from "../board/board.constants.js";
+import { Bitboard, Square } from "../board/types.chess.js";
+import { shiftNorth, shiftSouth } from "../movegen/move/move.bitboard.js";
+import * as MoveChess from "../movegen/move/move.chess.js";
+import * as SquareUtils from "./square.utils.js";
 import {
-  MOVE_FLAG_SHIFT,
-  MOVE_FROM_MASK,
-  MOVE_MASK,
-  MOVE_TO_MASK,
-  MOVE_TO_SHIFT,
+  MOVE_CAPTURE_FLAG,
+  MOVE_FLAGS,
+  MOVE_PROMOTION_FLAG,
+  MoveFlag,
+  PROMOTION_CAPTURE_FLAGS,
+  PROMOTION_FLAGS,
 } from "../movegen/move/move.constants.js";
-import { MOVE_FLAG_MASK } from "../movegen/move/move.constants.js";
-import { Move, MOVE_FLAGS, MoveFlag } from "../movegen/move/move.types.js";
-import { isValidSquare } from "./square.utils.js";
+import { Move } from "../movegen/move/move.types.js";
+import { isWhite } from "../piece/piece.chess.js";
+import { PIECE_TYPES } from "../piece/piece.constants.js";
+import { PieceColour } from "../piece/piece.types.js";
 
-// Cast
-export function toMove(value: number): Move {
-  if (!isValidMove(value)) {
-    throw new Error("Invalid move");
+export interface IMoveConstruct {
+  board: Board;
+  from: Square;
+  to: Square;
+  moves: Move[];
+}
+
+// TODO: Move to square.utils
+
+export function isEnpassantMove(move: Move): boolean {
+  const flag = MoveChess.getFlag(move);
+  return flag === MOVE_FLAGS.EnPassantCapture;
+}
+export function isEnpassantFlag(flag: MoveFlag): boolean {
+  return flag === MOVE_FLAGS.EnPassantCapture;
+}
+export function isCastlingMove(move: Move): boolean {
+  return isCastlingFlag(MoveChess.getFlag(move));
+}
+export function isCastlingFlag(flag: MoveFlag): boolean {
+  return flag === MOVE_FLAGS.KingCastle || flag === MOVE_FLAGS.QueenCastle;
+}
+export function isCaptureMove(move: Move): boolean {
+  return isCaptureFlag(MoveChess.getFlag(move));
+}
+export function isCaptureFlag(flag: MoveFlag): boolean {
+  return (flag & MOVE_CAPTURE_FLAG) === MOVE_CAPTURE_FLAG;
+}
+export function isPromotionMove(move: Move): boolean {
+  return isPromotionFlag(MoveChess.getFlag(move));
+}
+export function isPromotionFlag(flag: MoveFlag): boolean {
+  return (flag & MOVE_PROMOTION_FLAG) === MOVE_PROMOTION_FLAG;
+}
+
+export function encodePawnMove({
+  board,
+  from,
+  to,
+  moves,
+}: IMoveConstruct): void {
+  const isCapture = board.isOccupied(to);
+
+  if (SquareUtils.isPromotionSquare(to)) {
+    const flags = isCapture ? PROMOTION_CAPTURE_FLAGS : PROMOTION_FLAGS;
+    for (const flag of flags) {
+      moves.push(MoveChess.createMove(from, to, flag));
+    }
+    return;
   }
 
-  return value as Move;
+  let flag: MoveFlag = MOVE_FLAGS.Quiet;
+  if (SquareUtils.isEnPassantSquare(board.enPassant, to)) {
+    flag = MOVE_FLAGS.EnPassantCapture;
+  } else if (isCapture) {
+    flag = MOVE_FLAGS.Capture;
+  } else if (SquareUtils.isDoublePawnPushSquare(from, to)) {
+    flag = MOVE_FLAGS.DoublePawnPush;
+  }
+  moves.push(MoveChess.createMove(from, to, flag));
 }
 
-// Creation
-export function createMove(from: Square, to: Square, flag: MoveFlag): Move {
-  return (from | (to << MOVE_TO_SHIFT) | (flag << MOVE_FLAG_SHIFT)) as Move;
+export function encodeStandardMove({
+  board,
+  from,
+  to,
+  moves,
+}: IMoveConstruct): void {
+  if (board.isOccupied(to)) {
+    moves.push(MoveChess.createMove(from, to, MOVE_FLAGS.Capture));
+  } else {
+    moves.push(MoveChess.createMove(from, to, MOVE_FLAGS.Quiet));
+  }
 }
-
-// Validation
-export function isValidMove(value: number): value is Move {
-  if (!Number.isInteger(value)) return false;
-  if (value < 0) return false;
-  if (value > MOVE_MASK) return false;
-
-  return hasValidFrom(value) && hasValidTo(value) && hasValidFlag(value);
+export function encodeKingMove({
+  board,
+  from,
+  to,
+  moves,
+}: IMoveConstruct): void {
+  encodeStandardMove({ board, from, to, moves });
 }
-
-export function hasValidFrom(value: number): boolean {
-  return isValidSquare(extractFrom(value));
+export function encodeKnightMove({
+  board,
+  from,
+  to,
+  moves,
+}: IMoveConstruct): void {
+  encodeStandardMove({ board, from, to, moves });
 }
-export function hasValidTo(value: number): boolean {
-  return isValidSquare(extractTo(value));
+export function encodeBishopMove({
+  board,
+  from,
+  to,
+  moves,
+}: IMoveConstruct): void {
+  encodeStandardMove({ board, from, to, moves });
 }
-export function hasValidFlag(value: number): boolean {
-  return isValidFlag(extractFlag(value));
-}
-
-// insertion
-export function setFrom(move: Move, from: Square): Move {
-  return ((move & ~MOVE_FROM_MASK) | from) as Move;
-}
-
-export function setTo(move: Move, to: Square): Move {
-  return ((move & ~MOVE_TO_MASK) | (to << MOVE_TO_SHIFT)) as Move;
-}
-
-export function setFlag(move: Move, flag: MoveFlag): Move {
-  return ((move & ~MOVE_FLAG_MASK) | (flag << MOVE_FLAG_SHIFT)) as Move;
-}
-
-// Validated extraction
-export function getFrom(move: Move): Square {
-  return extractFrom(move) as Square;
-}
-export function getTo(move: Move): Square {
-  return extractTo(move) as Square;
-}
-export function getFlag(move: Move): MoveFlag {
-  return extractFlag(move) as MoveFlag;
-}
-
-// Unvalidated extraction
-function extractFrom(value: number): number {
-  return value & MOVE_FROM_MASK;
-}
-function extractTo(value: number): number {
-  return (value & MOVE_TO_MASK) >> MOVE_TO_SHIFT;
-}
-function extractFlag(value: number): number {
-  return (value & MOVE_FLAG_MASK) >> MOVE_FLAG_SHIFT;
-}
-export function isValidFlag(value: number): value is MoveFlag {
-  return value >= MOVE_FLAGS.Quiet && value <= MOVE_FLAGS.Check;
+export function encodeRookMove({
+  board,
+  from,
+  to,
+  moves,
+}: IMoveConstruct): void {
+  encodeStandardMove({ board, from, to, moves });
 }
