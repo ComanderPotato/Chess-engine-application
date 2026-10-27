@@ -180,6 +180,32 @@ describe("square.utils", () => {
         ).toBe(false);
       });
     });
+    describe(TestSquareUtils.isDoublePawnPushSquare, () => {
+      it("returns true when the destination square is two ranks up", () => {
+        expect(
+          TestSquareUtils.isDoublePawnPushSquare(
+            COORD_SQUARE_MAP.F2,
+            COORD_SQUARE_MAP.F4,
+          ),
+        ).toBe(true);
+      });
+      it("returns true when the destination square is two ranks down", () => {
+        expect(
+          TestSquareUtils.isDoublePawnPushSquare(
+            COORD_SQUARE_MAP.A7,
+            COORD_SQUARE_MAP.A5,
+          ),
+        ).toBe(true);
+      });
+      it("returns false when the move wasn't a double pawn push", () => {
+        expect(
+          TestSquareUtils.isDoublePawnPushSquare(
+            COORD_SQUARE_MAP.F2,
+            COORD_SQUARE_MAP.F3,
+          ),
+        ).toBe(false);
+      });
+    });
   });
 
   describe(TEST_CATEGORIES.RELATIONSHIP, () => {
@@ -207,6 +233,28 @@ describe("square.utils", () => {
             );
           }
         }
+      });
+    });
+    describe(TestSquareUtils.isOnSameDiagonal.name, () => {
+      it("returns true when two squares are on the same diagonal", () => {
+        expect(
+          TestSquareUtils.isOnSameDiagonal(
+            COORD_SQUARE_MAP.A1,
+            COORD_SQUARE_MAP.H8,
+          ),
+        ).toBe(true);
+        expect(
+          TestSquareUtils.isOnSameDiagonal(
+            COORD_SQUARE_MAP.H1,
+            COORD_SQUARE_MAP.A8,
+          ),
+        ).toBe(true);
+        expect(
+          TestSquareUtils.isOnSameDiagonal(
+            COORD_SQUARE_MAP.C2,
+            COORD_SQUARE_MAP.G6,
+          ),
+        ).toBe(true);
       });
     });
   });
