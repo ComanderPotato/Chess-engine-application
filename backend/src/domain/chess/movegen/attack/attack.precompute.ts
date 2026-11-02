@@ -1,13 +1,8 @@
 // On startup functions
-import {
-  BOARD_SIZE,
-  FULL_BOARD_MASK,
-  SQUARES,
-} from "@/domain/chess/board/board.constants.js";
+import { BOARD_SIZE, SQUARES } from "@/domain/chess/board/board.constants.js";
 import {
   Bitboard,
   ReadonlyBitboards,
-  Square,
 } from "@/domain/chess/board/types.chess.js";
 import { Piece } from "@/domain/chess/piece/piece.types.js";
 import {
@@ -30,10 +25,9 @@ import {
   isOnSameDiagonal,
   toRank,
   toFile,
-  toSquare,
 } from "../../utils/square.utils.js";
 import { Direction } from "../move/move.directions.js";
-import { squareToCoord } from "../../utils/coord.utils.js";
+import { squareToBB } from "../../utils/bitboard.utils.js";
 
 // ==== Pawn attack masks ====
 export function precomputePawnAttackMasks(): [
@@ -147,7 +141,7 @@ export function precomputeBetweenRays(): Bitboard[][] {
           direction = isLowerFile ? "NW" : "NE";
         }
       }
-      BETWEEN[from]![to] = walkRay(from, direction!, 1n << BigInt(to));
+      BETWEEN[from]![to] = walkRay(from, direction!, squareToBB(to));
     }
   }
   return BETWEEN;
