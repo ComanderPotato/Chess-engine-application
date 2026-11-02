@@ -3,6 +3,8 @@ export const FENS = {
   /** Standard chess starting position */
   START: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 
+  ONE_PAWN: "rnbqkbnr/pppppppp/8/8/8/8/P7/RNBQKBNR w KQkq - 0 1",
+
   /** Completely empty board */
   EMPTY: "8/8/8/8/8/8/8/8 w - - 0 1",
 
@@ -27,7 +29,7 @@ export const FENS = {
   PROMOTION: "8/P7/8/8/8/8/7p/8 w - - 0 1",
 
   /** Black in check */
-  CHECK: "4k3/8/8/8/8/8/4R3/4K3 b - - 0 1",
+  CHECK: "8/4k3/8/8/8/8/4R3/4K3 b - - 0 1",
 
   /** Double check */
   DOUBLE_CHECK: "4k3/8/8/8/8/5B2/4R3/4K3 b - - 0 1",
