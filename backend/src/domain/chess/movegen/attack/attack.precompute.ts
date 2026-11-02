@@ -1,8 +1,13 @@
 // On startup functions
-import { BOARD_SIZE, SQUARES } from "@/domain/chess/board/board.constants.js";
+import {
+  BOARD_SIZE,
+  FULL_BOARD_MASK,
+  SQUARES,
+} from "@/domain/chess/board/board.constants.js";
 import {
   Bitboard,
   ReadonlyBitboards,
+  Square,
 } from "@/domain/chess/board/types.chess.js";
 import { Piece } from "@/domain/chess/piece/piece.types.js";
 import {
@@ -18,7 +23,17 @@ import {
   generateBlackPawnAttackMask,
 } from "./attack.mask.js";
 import { computeIndex } from "../../utils/magic.utils.js";
-import { walkSlidingRays } from "./attack.rays.js";
+import { walkRay, walkSlidingRays } from "./attack.rays.js";
+import {
+  isOnSameFile,
+  isOnSameRank,
+  isOnSameDiagonal,
+  toRank,
+  toFile,
+  toSquare,
+} from "../../utils/square.utils.js";
+import { Direction } from "../move/move.directions.js";
+import { squareToCoord } from "../../utils/coord.utils.js";
 
 // ==== Pawn attack masks ====
 export function precomputePawnAttackMasks(): [
@@ -95,4 +110,45 @@ export function precomputeSlidingAttackTables(
     }
   }
   return attackTable;
+}
+
+export function precomputeBetweenRays(): Bitboard[][] {
+  const BETWEEN = Array.from(
+    { length: BOARD_SIZE },
+    () => new Array<Bitboard>(BOARD_SIZE),
+  );
+  for (const from of SQUARES) {
+    for (const to of SQUARES) {
+      if (from === to) {
+        BETWEEN[from]![to] = 0n;
+        continue;
+      }
+      const onSameFile = isOnSameFile(from, to);
+      const onSameRank = isOnSameRank(from, to);
+      const onSameDiagonal = isOnSameDiagonal(from, to);
+      if (!onSameFile && !onSameRank && !onSameDiagonal) {
+        BETWEEN[from]![to] = 0n;
+        continue;
+      }
+
+      const isKingSquareLess = from < to;
+      const isLowerRank = toRank(from) > toRank(to);
+      const isLowerFile = toFile(from) > toFile(to);
+      let direction: Direction;
+
+      if (onSameFile) {
+        direction = isKingSquareLess ? "N" : "S";
+      } else if (onSameRank) {
+        direction = isKingSquareLess ? "E" : "W";
+      } else if (onSameDiagonal) {
+        if (isLowerRank) {
+          direction = isLowerFile ? "SW" : "SE";
+        } else {
+          direction = isLowerFile ? "NW" : "NE";
+        }
+      }
+      BETWEEN[from]![to] = walkRay(from, direction!, 1n << BigInt(to));
+    }
+  }
+  return BETWEEN;
 }
