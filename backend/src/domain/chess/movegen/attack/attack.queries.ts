@@ -6,7 +6,12 @@ import { getEnemyColour, normaliseColour } from "../../piece/piece.chess.js";
 import { PIECE_TYPES } from "../../piece/piece.constants.js";
 import { PieceColour } from "../../piece/piece.types.js";
 import { isBitSet64 } from "../../utils/bit.utils.js";
-import { clearLSB, getLSBIndex, popCount } from "../../utils/bitboard.utils.js";
+import {
+  clearLSB,
+  getLSBIndex,
+  popCount,
+  squareToBB,
+} from "../../utils/bitboard.utils.js";
 import { squareToCoord } from "../../utils/coord.utils.js";
 import {
   generateBishopAttacks,
@@ -65,7 +70,7 @@ export function queryPinnedPieces(board: Board, occupancy: Bitboard): Bitboard {
   let pinnedPieces = 0n;
   while (potentialOrthogonalPins !== 0n) {
     const square = getLSBIndex(potentialOrthogonalPins)!;
-    const bb = 1n << BigInt(square);
+    const bb = squareToBB(square);
     if (
       (generateSlidingAttack(
         activeKingSquare,
@@ -81,7 +86,7 @@ export function queryPinnedPieces(board: Board, occupancy: Bitboard): Bitboard {
   }
   while (potentialDiagonalPins !== 0n) {
     const square = getLSBIndex(potentialDiagonalPins)!;
-    const bb = 1n << BigInt(square);
+    const bb = squareToBB(square);
     if (
       (generateSlidingAttack(
         activeKingSquare,
@@ -244,7 +249,7 @@ export function filterPinnedPieceMovement(
   if (!square) return 0n;
   const activeKingSquare = board.getKingSquare(board.activeColour);
   const occupancy = board.occupancy;
-  const pinned = 1n << BigInt(square);
+  const pinned = squareToBB(square);
   let potentialOrthogonalPins =
     generateSlidingAttack(
       activeKingSquare,
