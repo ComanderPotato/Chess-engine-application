@@ -18,20 +18,28 @@ import {
 } from "./attack.tables.js";
 import { computeIndex } from "../../utils/magic.utils.js";
 import { shiftLeft, shiftRight } from "../move/move.bitboard.js";
+import {
+  NOT_A_FILE_MASK,
+  NOT_H_FILE_MASK,
+} from "../../board/board.constants.js";
 
 export function generatePawnAttacks(board: Board, side: PieceColour): Bitboard {
   let pawnBoard = board.getBitboard(PIECE_TYPES.Pawn | side);
   const shiftDirection = isWhite(side) ? shiftRight : shiftLeft;
+  const a = isWhite(side) ? NOT_A_FILE_MASK : NOT_H_FILE_MASK;
+  const b = isWhite(side) ? NOT_H_FILE_MASK : NOT_A_FILE_MASK;
   const enPassant = board.enPassant ? 1n << BigInt(board.enPassant) : 0n;
   return (
-    shiftDirection(pawnBoard, 7) | shiftDirection(pawnBoard, 9) | enPassant
+    shiftDirection(pawnBoard & a, 7) |
+    shiftDirection(pawnBoard & b, 9) |
+    enPassant
   );
 }
 export function generateKnightAttacks(
   knightBoard: Bitboard,
-  occupancy: Bitboard,
+  activeOccupancy: Bitboard,
 ) {
-  return generateTableAttacks(knightBoard, occupancy, KNIGHT_ATTACKS);
+  return generateTableAttacks(knightBoard, activeOccupancy, KNIGHT_ATTACKS);
 }
 export function generateBishopAttacks(
   bishopBoard: Bitboard,
@@ -54,17 +62,20 @@ export function generateQueenAttacks(
     generateDiagonalAttacks(queenBoard, occupancy)
   );
 }
-export function generateKingAttacks(kingBoard: Bitboard, occupancy: Bitboard) {
-  return generateTableAttacks(kingBoard, occupancy, KING_ATTACKS);
+export function generateKingAttacks(
+  kingBoard: Bitboard,
+  activeOccupancy: Bitboard,
+) {
+  return generateTableAttacks(kingBoard, activeOccupancy, KING_ATTACKS);
 }
 
-function generateDiagonalAttacks(
+export function generateDiagonalAttacks(
   pieceBoard: Bitboard,
   occpancy: Bitboard,
 ): Bitboard {
   return generateSlidingAttacks(pieceBoard, occpancy, DIAGONAL_TABLES);
 }
-function generateOrthogonalAttacks(
+export function generateOrthogonalAttacks(
   pieceBoard: Bitboard,
   occupancy: Bitboard,
 ): Bitboard {
@@ -98,42 +109,54 @@ export function generateSlidingAttack(
   const attacks = tables.ATTACKS[square]![index]!;
   return attacks;
 }
-export function generateTableAttack(
-  square: Square,
-  activeOccupancy: Bitboard,
-  table: ReadonlyBitboards,
-) {
-  return table[square]! & ~activeOccupancy;
+export function generateTableAttack(square: Square, table: ReadonlyBitboards) {
+  return table[square]!;
 }
 function generateTableAttacks(
   pieceBoard: Bitboard,
-  occupancy: Bitboard,
+  activeOccupancy: Bitboard,
   table: ReadonlyBitboards,
 ) {
   let attackMask = 0n;
   while (pieceBoard !== 0n) {
     const square = getLSBIndex(pieceBoard)!;
     pieceBoard = clearBit64(pieceBoard, square);
-    attackMask |= generateTableAttack(square, occupancy, table);
-    attackMask |= table[square]! & ~occupancy;
+    attackMask |= generateTableAttack(square, table) & ~activeOccupancy;
   }
   return attackMask;
 }
-export function generateAttacks(board: Board, side: PieceColour): Bitboard {
+export function generateAttacks(
+  board: Board,
+  side: PieceColour = board.activeColour,
+  occupancy: Bitboard = board.occupancy,
+  activeOccupancy: Bitboard = board.getFriendlyOccupancyFor(side),
+): Bitboard {
   let attacks = 0n;
-  const occupancy = board.activeOccupancy;
   attacks |= generatePawnAttacks(board, side);
-  attacks |= generateKnightAttacks(board.getKnights(), occupancy);
-  attacks |= generateBishopAttacks(board.getBishops(), occupancy);
-  attacks |= generateRookAttacks(board.getRooks(), occupancy);
-  attacks |= generateQueenAttacks(board.getQueens(), occupancy);
-  attacks |= generateKingAttacks(board.getKing(), occupancy);
+  attacks |= generateKnightAttacks(board.getKnights(side), activeOccupancy);
+  attacks |= generateBishopAttacks(board.getBishops(side), occupancy);
+  attacks |= generateRookAttacks(board.getRooks(side), occupancy);
+  attacks |= generateQueenAttacks(board.getQueens(side), occupancy);
+  attacks |= generateKingAttacks(board.getKing(side), activeOccupancy);
   return attacks;
 }
-export function generateFriendlyAttacks(board: Board): Bitboard {
-  return generateAttacks(board, board.activeColour);
+export function generateFriendlyAttacks(
+  board: Board,
+  occupancy: Bitboard = board.occupancy,
+  friendlyOccupancy: Bitboard = board.activeOccupancy,
+): Bitboard {
+  return generateAttacks(
+    board,
+    board.activeColour,
+    occupancy,
+    friendlyOccupancy,
+  );
 }
-export function generateEnemyAttacks(board: Board): Bitboard {
+export function generateEnemyAttacks(
+  board: Board,
+  occupancy: Bitboard = board.occupancy,
+  opponentOccupancy: Bitboard = board.enemyOccupancy,
+): Bitboard {
   const side = getEnemyColour(board.activeColour);
-  return generateAttacks(board, getEnemyColour(board.activeColour));
+  return generateAttacks(board, side, occupancy, opponentOccupancy);
 }
