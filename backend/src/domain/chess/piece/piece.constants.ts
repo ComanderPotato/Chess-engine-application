@@ -33,6 +33,7 @@ export const PIECE_COLOURS = {
 } as const;
 
 export const PIECE_PROPERTIES = {
+  None: 0,
   Sliding: 32,
   Orthogonal: 64,
   Diagonal: 128,
@@ -46,6 +47,32 @@ export const NotationToPiece = {
   r: PIECE_TYPES.Rook,
   q: PIECE_TYPES.Queen,
   k: PIECE_TYPES.King,
+} as const;
+
+export const NotationToProperty = {
+  // _: PieceType.Empty,
+  p: PIECE_PROPERTIES.None,
+  n: PIECE_PROPERTIES.None,
+  b: PIECE_PROPERTIES.Diagonal | PIECE_PROPERTIES.Sliding,
+  r: PIECE_PROPERTIES.Orthogonal | PIECE_PROPERTIES.Sliding,
+  q:
+    PIECE_PROPERTIES.Sliding |
+    PIECE_PROPERTIES.Diagonal |
+    PIECE_PROPERTIES.Orthogonal,
+  k: PIECE_PROPERTIES.None,
+} as const;
+
+export const PieceToProperty = {
+  [PIECE_TYPES.Empty]: PIECE_PROPERTIES.None,
+  [PIECE_TYPES.Pawn]: PIECE_PROPERTIES.None,
+  [PIECE_TYPES.Knight]: PIECE_PROPERTIES.None,
+  [PIECE_TYPES.Bishop]: PIECE_PROPERTIES.Diagonal | PIECE_PROPERTIES.Sliding,
+  [PIECE_TYPES.Rook]: PIECE_PROPERTIES.Orthogonal | PIECE_PROPERTIES.Sliding,
+  [PIECE_TYPES.Queen]:
+    PIECE_PROPERTIES.Sliding |
+    PIECE_PROPERTIES.Diagonal |
+    PIECE_PROPERTIES.Orthogonal,
+  [PIECE_TYPES.King]: PIECE_PROPERTIES.None,
 } as const;
 
 export const PieceToNotation = {
