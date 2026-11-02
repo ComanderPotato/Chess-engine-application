@@ -7,7 +7,7 @@ import { getEnemyColour, isWhite } from "@/domain/chess/piece/piece.chess.js";
 import { PieceColour } from "@/domain/chess/piece/piece.types.js";
 import { Board } from "../../board/board.chess.js";
 import { clearBit64 } from "../../utils/bit.utils.js";
-import { getLSBIndex } from "../../utils/bitboard.utils.js";
+import { getLSBIndex, squareToBB } from "../../utils/bitboard.utils.js";
 import { PIECE_TYPES } from "../../piece/piece.constants.js";
 import {
   DIAGONAL_TABLES,
@@ -28,7 +28,7 @@ export function generatePawnAttacks(board: Board, side: PieceColour): Bitboard {
   const shiftDirection = isWhite(side) ? shiftRight : shiftLeft;
   const a = isWhite(side) ? NOT_A_FILE_MASK : NOT_H_FILE_MASK;
   const b = isWhite(side) ? NOT_H_FILE_MASK : NOT_A_FILE_MASK;
-  const enPassant = board.enPassant ? 1n << BigInt(board.enPassant) : 0n;
+  const enPassant = board.enPassant ? squareToBB(board.enPassant) : 0n;
   return (
     shiftDirection(pawnBoard & a, 7) |
     shiftDirection(pawnBoard & b, 9) |
