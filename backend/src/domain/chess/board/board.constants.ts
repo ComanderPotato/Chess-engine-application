@@ -1,4 +1,9 @@
-import type { Bitboard, ReadonlyBitboards, Square } from "./types.chess.js";
+import type {
+  Bit,
+  Bitboard,
+  ReadonlyBitboards,
+  Square,
+} from "./types.chess.js";
 
 export const BOARD_DIMENSION = 8;
 export const BOARD_SIZE = BOARD_DIMENSION * BOARD_DIMENSION;
@@ -40,6 +45,11 @@ export const RANKS = {
   SEVENTH: 6,
   EIGHTH: 7,
 } as const;
+
+export const SQUARE_TO_BB: Bitboard[] = Array.from(
+  { length: BOARD_SIZE },
+  (_, square) => 1n << BigInt(square),
+) as Bitboard[];
 
 export const RANK_MASKS: ReadonlyBitboards = Array.from(
   { length: RANK_SIZE },
