@@ -1,20 +1,29 @@
 import { Board } from "../../board/board.chess.js";
-import { Bitboard, ReadonlyBitboards } from "../../board/types.chess.js";
 import {
-  getColour,
+  Bitboard,
+  ReadonlyBitboards,
+  Square,
+} from "../../board/types.chess.js";
+import {
   getEnemyColour,
-  getType,
+  hasDiagonalMovement,
+  hasOrthogonalMovement,
   isSlidingPiece,
   isWhite,
   normaliseColour,
 } from "../../piece/piece.chess.js";
-import { Piece, PieceColour } from "../../piece/piece.types.js";
-import { clearBit64 } from "../../utils/bit.utils.js";
-import { getLSBIndex, clearLSB } from "../../utils/bitboard.utils.js";
+import { Piece, PieceColour, PieceProperty } from "../../piece/piece.types.js";
+import { clearBit64, isBitSet64 } from "../../utils/bit.utils.js";
+import {
+  getLSBIndex,
+  clearLSB,
+  popCount,
+  squareToBB,
+} from "../../utils/bitboard.utils.js";
 import { computeIndex } from "../../utils/magic.utils.js";
 import { toSquare } from "../../utils/square.utils.js";
 import { Move } from "./move.types.js";
-import { PIECE_TYPES } from "../../piece/piece.constants.js";
+import { PIECE_PROPERTIES, PIECE_TYPES } from "../../piece/piece.constants.js";
 import * as AttackTables from "../attack/attack.tables.js";
 import * as MoveUtils from "../../utils/move.utils.js";
 import * as MoveChess from "./move.chess.js";
@@ -24,11 +33,18 @@ import {
   generateAttacksOnSquare,
   getChecksOnKing,
   isSquareAttacked,
+  queryPinnedPieces,
 } from "../attack/attack.queries.js";
 import { Timer } from "../../debug/timer.debug.js";
-import { BOARD_MASK, RANK_MASKS, RANKS } from "../../board/board.constants.js";
+import { RANK_MASKS, RANKS } from "../../board/board.constants.js";
 import { shiftNorth, shiftSouth } from "./move.bitboard.js";
 import { computeRay } from "../attack/attack.rays.js";
+import {
+  generateAttacks,
+  generateEnemyAttacks,
+} from "../attack/attack.generators.js";
+import { printBitboard } from "../../debug/printer.chess.js";
+import { decodeMove } from "./move.debug.js";
 
 export const pseudoTimer = new Timer("Pseudo legal");
 export const makeMoveTimer = new Timer("Make move");
@@ -102,7 +118,6 @@ export function tempgeneratePawnMoves(
   board: Board,
   pieceBoard: Bitboard,
   side: PieceColour,
-  enemyOccupancy: Bitboard,
   pushMask: Bitboard,
   captureMask: Bitboard,
   moves: Move[],
@@ -111,20 +126,21 @@ export function tempgeneratePawnMoves(
   const attackTable = AttackTables.PAWN_ATTACKS[normaliseColour(side)]!;
   const pawnForwardMoves = generatePawnMoveBoard(board, side);
   const shiftDirection = isWhite(side) ? shiftNorth : shiftSouth;
-  const enPassant = board.enPassant ? 1n << BigInt(board.enPassant) : 0n;
+  const enPassant = board.enPassant ? squareToBB(board.enPassant) : 0n;
 
   while (pieceBoard !== 0n) {
     const from = getLSBIndex(pieceBoard)!;
     pieceBoard = clearBit64(pieceBoard, from);
-    const fromBit = 1n << BigInt(from);
+    const fromBit = squareToBB(from);
 
     const singlePush = shiftDirection(fromBit) & pawnForwardMoves;
 
     const forwardMoves =
       singlePush | (shiftDirection(singlePush) & pawnForwardMoves);
-    const attackMoves = attackTable[from]! & (enemyOccupancy | enPassant);
+    const attackMoves = attackTable[from]!;
 
-    let targets = (forwardMoves & pushMask) | (attackMoves & captureMask);
+    let targets =
+      (forwardMoves & pushMask) | (attackMoves & (captureMask | enPassant));
 
     while (targets !== 0n) {
       const to = getLSBIndex(targets)!;
@@ -143,12 +159,12 @@ export function generatePawnMoves(
   const attackTable = AttackTables.PAWN_ATTACKS[normaliseColour(side)]!;
   const pawnForwardMoves = generatePawnMoveBoard(board, side);
   const shiftDirection = isWhite(side) ? shiftNorth : shiftSouth;
-  const enPassant = board.enPassant ? 1n << BigInt(board.enPassant) : 0n;
+  const enPassant = board.enPassant ? squareToBB(board.enPassant) : 0n;
 
   while (pawnBoard !== 0n) {
     const from = getLSBIndex(pawnBoard)!;
     pawnBoard = clearBit64(pawnBoard, from);
-    const fromBit = 1n << BigInt(from);
+    const fromBit = squareToBB(from);
 
     const singlePush = shiftDirection(fromBit) & pawnForwardMoves;
 
@@ -168,21 +184,17 @@ export function generatePawnMoves(
 function tempgenerateTableMoves(
   board: Board,
   pieceBoard: Bitboard,
-  empty: Bitboard,
-  pushMask: Bitboard,
-  captureMask: Bitboard,
+  targetMask: Bitboard,
   moves: Move[],
   table: ReadonlyBitboards,
 ): void {
-  let mask = 0n;
   while (pieceBoard !== 0n) {
     const from = getLSBIndex(pieceBoard)!;
     pieceBoard = clearBit64(pieceBoard, from);
 
     let targets = table[from]!;
 
-    targets &= empty & pushMask & captureMask;
-    mask |= targets;
+    targets &= targetMask;
 
     while (targets !== 0n) {
       const to = getLSBIndex(targets)!;
@@ -214,25 +226,19 @@ function generateTableMoves(
       targets = clearLSB(targets);
       MoveUtils.encodeStandardMove({ board, from, to, moves });
     }
-    if (getType(piece) === PIECE_TYPES.King) {
-      generateCastlingMoves(board, getColour(piece), moves);
-    }
   }
 }
 function tempgenerateKnightMoves(
   board: Board,
   pieceBoard: Bitboard,
-  empty: Bitboard,
-  pushMask: Bitboard,
-  captureMask: Bitboard,
+  targetMask: Bitboard,
   moves: Move[],
 ): void {
+  if (targetMask === 0n) return;
   tempgenerateTableMoves(
     board,
     pieceBoard,
-    empty,
-    pushMask,
-    captureMask,
+    targetMask,
     moves,
     AttackTables.KNIGHT_ATTACKS,
   );
@@ -254,17 +260,14 @@ function generateKnightMoves(
 function tempgenerateKingMoves(
   board: Board,
   pieceBoard: Bitboard,
-  empty: Bitboard,
-  pushMask: Bitboard,
-  captureMask: Bitboard,
+  targetMask: Bitboard,
   moves: Move[],
 ): void {
+  if (targetMask === 0n) return;
   tempgenerateTableMoves(
     board,
     pieceBoard,
-    empty,
-    pushMask,
-    captureMask,
+    targetMask,
     moves,
     AttackTables.KING_ATTACKS,
   );
@@ -284,45 +287,33 @@ function generateKingMoves(
   );
 }
 
+export function tempgenerateBishopMoves(
+  board: Board,
+  pieceBoard: Bitboard,
+  occupancy: Bitboard,
+  targetSquares: Bitboard,
+  moves: Move[],
+): void {
+  if (targetSquares === 0n) return;
+  tempgenerateDiagonalMoves(board, pieceBoard, occupancy, targetSquares, moves);
+}
 function tempgenerateRookMoves(
   board: Board,
   pieceBoard: Bitboard,
-  empty: Bitboard,
   occupancy: Bitboard,
-  pushMask: Bitboard,
-  captureMask: Bitboard,
+  targetSquares: Bitboard,
   moves: Move[],
 ): void {
+  if (targetSquares === 0n) return;
   tempgenerateOrthogonalMoves(
     board,
     pieceBoard,
-    empty,
     occupancy,
-    pushMask,
-    captureMask,
+    targetSquares,
     moves,
   );
 }
 
-export function tempgenerateBishopMoves(
-  board: Board,
-  pieceBoard: Bitboard,
-  empty: Bitboard,
-  pushMask: Bitboard,
-  captureMask: Bitboard,
-  occupancy: Bitboard,
-  moves: Move[],
-): void {
-  tempgenerateDiagonalMoves(
-    board,
-    pieceBoard,
-    empty,
-    occupancy,
-    pushMask,
-    captureMask,
-    moves,
-  );
-}
 function generateRookMoves(
   board: Board,
   empty: Bitboard,
@@ -389,19 +380,16 @@ function generateOrthogonalMoves(
 function tempgenerateDiagonalMoves(
   board: Board,
   pieceBoard: Bitboard,
-  empty: Bitboard,
   occupancy: Bitboard,
-  pushMask: Bitboard,
-  captureMask: Bitboard,
+  targetSquares: Bitboard,
   moves: Move[],
 ): void {
+  if (targetSquares === 0n) return;
   tempgenerateSlidingMoves(
     board,
     pieceBoard,
-    empty,
     occupancy,
-    pushMask,
-    captureMask,
+    targetSquares,
     moves,
     AttackTables.DIAGONAL_TABLES,
   );
@@ -409,19 +397,16 @@ function tempgenerateDiagonalMoves(
 function tempgenerateOrthogonalMoves(
   board: Board,
   pieceBoard: Bitboard,
-  empty: Bitboard,
   occupancy: Bitboard,
-  pushMask: Bitboard,
-  captureMask: Bitboard,
+  targetSquares: Bitboard,
   moves: Move[],
 ): void {
+  if (targetSquares === 0n) return;
   tempgenerateSlidingMoves(
     board,
     pieceBoard,
-    empty,
     occupancy,
-    pushMask,
-    captureMask,
+    targetSquares,
     moves,
     AttackTables.ORTHOGONAL_TABLES,
   );
@@ -429,30 +414,19 @@ function tempgenerateOrthogonalMoves(
 function tempgenerateQueenMoves(
   board: Board,
   pieceBoard: Bitboard,
-  empty: Bitboard,
   occupancy: Bitboard,
-  pushMask: Bitboard,
-  captureMask: Bitboard,
+  targetSquares: Bitboard,
   moves: Move[],
 ): void {
+  if (targetSquares === 0n) return;
   tempgenerateOrthogonalMoves(
     board,
     pieceBoard,
-    empty,
     occupancy,
-    pushMask,
-    captureMask,
+    targetSquares,
     moves,
   );
-  tempgenerateDiagonalMoves(
-    board,
-    pieceBoard,
-    empty,
-    occupancy,
-    pushMask,
-    captureMask,
-    moves,
-  );
+  tempgenerateDiagonalMoves(board, pieceBoard, occupancy, targetSquares, moves);
 }
 function generateQueenMoves(
   board: Board,
@@ -466,16 +440,25 @@ function generateQueenMoves(
   generateOrthogonalMoves(board, empty, occupancy, piece, moves);
   generateDiagonalMoves(board, empty, occupancy, piece, moves);
 }
+
+interface IMoveGen {
+  board: Board;
+  pieceBoard: Bitboard;
+  unoccupiedSquare: Bitboard;
+  occupancy: Bitboard;
+  kingSquare: Square;
+  moves: Move[];
+  tables: AttackTables.SlidingTables;
+}
 function tempgenerateSlidingMoves(
   board: Board,
   pieceBoard: Bitboard,
-  empty: Bitboard,
   occupancy: Bitboard,
-  pushMask: Bitboard,
-  captureMask: Bitboard,
+  targetSquares: Bitboard,
   moves: Move[],
   tables: AttackTables.SlidingTables,
 ): void {
+  if (targetSquares === 0n) return;
   while (pieceBoard !== 0n) {
     const from = getLSBIndex(pieceBoard)!;
     pieceBoard = clearBit64(pieceBoard, from);
@@ -490,7 +473,7 @@ function tempgenerateSlidingMoves(
 
     let targets = tables.ATTACKS[from]![index]!;
 
-    targets &= empty & pushMask & captureMask;
+    targets &= targetSquares;
 
     while (targets !== 0n) {
       const to = getLSBIndex(targets)!;
@@ -548,89 +531,122 @@ function generateSlidingMoves(
 // Elapsed time for Unmake move: 33.238 ms
 // Elapsed time for Is square attacked: 97.811 ms
 
+// TODO: PLACEHOLDER FRIENDLY KING DANGER SQUARES
+function generateKingDangerSquares(board: Board): Bitboard {
+  return generateEnemyAttacks(
+    board,
+    board.occupancy & ~board.getKing(board.activeColour),
+  );
+}
+
 // TODO: PLACEHOLDER
-export function test(
+export function veryTempPseudo(
   board: Board,
   activeColour: PieceColour = board.activeColour,
+  enemyAttacks: Bitboard = 0n,
 ): Move[] {
   const moves: Move[] = [];
   const kingSquare = board.getKingSquare(activeColour);
-  let captureMask = BOARD_MASK;
-  let pushMask = BOARD_MASK;
-  const checksOnKing = getChecksOnKing(board, activeColour);
+  const activeOccupancy = board.getFriendlyOccupancyFor(activeColour);
+
+  const enemyOccupancy = board.getEnemyOccupancyFor(activeColour);
+
+  const occupancy = activeOccupancy | enemyOccupancy;
+  const targetMask = ~activeOccupancy;
+
+  let captureMask = targetMask;
+  let pushMask = targetMask;
+
   const attacksOnKing = generateAttacksOnSquare(
     board,
     board.getKingSquare(activeColour),
     getEnemyColour(activeColour),
   );
-  if (checksOnKing == 1) {
-    captureMask = attacksOnKing;
+  const numCheckers = popCount(attacksOnKing);
 
+  if (numCheckers == 1) {
+    captureMask = attacksOnKing;
     const pieceIdx = getLSBIndex(attacksOnKing)!;
     if (isSlidingPiece(board.pieceAt(pieceIdx))) {
-      pushMask = computeRay(toSquare(pieceIdx), kingSquare);
+      pushMask = AttackTables.BETWEEN[kingSquare]![pieceIdx]!;
     } else {
       pushMask = 0n;
     }
   }
 
+  if (numCheckers < 2) {
+    tempgeneratePawnMoves(
+      board,
+      board.getPawns(activeColour),
+      activeColour,
+      pushMask,
+      enemyOccupancy & captureMask,
+      moves,
+    );
+    tempgenerateKnightMoves(
+      board,
+      board.getKnights(activeColour),
+      pushMask | captureMask,
+      moves,
+    );
+    tempgenerateBishopMoves(
+      board,
+      board.getBishops(activeColour),
+      occupancy,
+      pushMask | captureMask,
+      moves,
+    );
+    tempgenerateRookMoves(
+      board,
+      board.getRooks(activeColour),
+      occupancy,
+      pushMask | captureMask,
+      moves,
+    );
+    tempgenerateQueenMoves(
+      board,
+      board.getQueens(activeColour),
+      occupancy,
+      pushMask | captureMask,
+      moves,
+    );
+    numCheckers === 0 &&
+      generateCastlingMoves(board, activeColour, enemyAttacks, moves);
+  }
+  tempgenerateKingMoves(board, board.getKing(activeColour), targetMask, moves);
+  // generateCastlingMoves(board, activeColour, enemyAttacks, moves);
+  return moves;
+}
+export function canPinnedPieceMove(
+  piece: Piece,
+  pinnedBy: PieceProperty,
+): boolean {
+  const canMoveDiagonally =
+    pinnedBy === PIECE_PROPERTIES.Diagonal && hasDiagonalMovement(piece);
+  const canMoveOrthogonally =
+    pinnedBy === PIECE_PROPERTIES.Orthogonal && hasOrthogonalMovement(piece);
+
+  return canMoveDiagonally || canMoveOrthogonally;
+}
+export function generatePseudoLegalMovesV2(
+  board: Board,
+  activeColour: PieceColour = board.activeColour,
+): Move[] {
+  const moves: Move[] = [];
+
   const activeOccupancy = board.getFriendlyOccupancyFor(activeColour);
+  const pinnedPieces = queryPinnedPieces(board, activeOccupancy);
   const enemyOccupancy = board.getEnemyOccupancyFor(activeColour);
   const occupancy = activeOccupancy | enemyOccupancy;
   const empty = ~activeOccupancy;
-  tempgeneratePawnMoves(
-    board,
-    board.getPawns(activeColour),
-    activeColour,
-    enemyOccupancy,
-    pushMask,
-    captureMask,
-    moves,
-  );
-  tempgenerateKnightMoves(
-    board,
-    board.getKnights(activeColour),
-    empty,
-    pushMask,
-    captureMask,
-    moves,
-  );
-  tempgenerateBishopMoves(
-    board,
-    board.getBishops(activeColour),
-    empty,
-    occupancy,
-    pushMask,
-    captureMask,
-    moves,
-  );
-  tempgenerateRookMoves(
-    board,
-    board.getRooks(activeColour),
-    empty,
-    occupancy,
-    pushMask,
-    captureMask,
-    moves,
-  );
-  tempgenerateQueenMoves(
-    board,
-    board.getQueens(activeColour),
-    empty,
-    occupancy,
-    pushMask,
-    captureMask,
-    moves,
-  );
-  tempgenerateKingMoves(
-    board,
-    board.getKing(activeColour),
-    empty,
-    pushMask,
-    captureMask,
-    moves,
-  );
-  generateCastlingMoves(board, activeColour, moves);
+  const numCheckers = getChecksOnKing(board, activeColour);
+
+  generatePawnMoves(board, enemyOccupancy, activeColour, moves);
+  generateKnightMoves(board, empty, activeColour, moves);
+  generateBishopMoves(board, empty, occupancy, activeColour, moves);
+  generateRookMoves(board, empty, occupancy, activeColour, moves);
+  generateQueenMoves(board, empty, occupancy, activeColour, moves);
+  generateKingMoves(board, empty, activeColour, moves);
   return moves;
 }
 export function generatePseudoLegalMoves(
@@ -645,12 +661,14 @@ export function generatePseudoLegalMoves(
   const empty = ~activeOccupancy;
   const numCheckers = getChecksOnKing(board, activeColour);
 
+  const enemyAttacks = generateEnemyAttacks(board);
   generatePawnMoves(board, enemyOccupancy, activeColour, moves);
   generateKnightMoves(board, empty, activeColour, moves);
   generateBishopMoves(board, empty, occupancy, activeColour, moves);
   generateRookMoves(board, empty, occupancy, activeColour, moves);
   generateQueenMoves(board, empty, occupancy, activeColour, moves);
   generateKingMoves(board, empty, activeColour, moves);
+  generateCastlingMoves(board, activeColour, enemyAttacks, moves);
   // generateCastlingMoves(board, activeColour, moves);
 
   return moves;
@@ -660,6 +678,7 @@ export const castlingTimer = new Timer("Castling");
 function generateCastlingMoves(
   board: Board,
   activeColour: PieceColour,
+  enemyAttacks: Bitboard,
   moves: Move[],
 ): void {
   castlingTimer.startTimer();
@@ -669,7 +688,7 @@ function generateCastlingMoves(
 
   const kingSquare = board.getKingSquare(activeColour);
 
-  if (canKingSide && canKingSideCastle(board, activeColour)) {
+  if (canKingSide && canKingSideCastle(board, activeColour, enemyAttacks)) {
     moves.push(
       MoveChess.createMove(
         kingSquare,
@@ -678,7 +697,7 @@ function generateCastlingMoves(
       ),
     );
   }
-  if (canQueenSide && canQueenSideCastle(board, activeColour)) {
+  if (canQueenSide && canQueenSideCastle(board, activeColour, enemyAttacks)) {
     moves.push(
       MoveChess.createMove(
         kingSquare,
@@ -689,28 +708,41 @@ function generateCastlingMoves(
   }
   castlingTimer.stopTimer();
 }
-function canKingSideCastle(board: Board, activeColour: PieceColour): boolean {
+function canKingSideCastle(
+  board: Board,
+  activeColour: PieceColour,
+  enemyAttacks: Bitboard,
+): boolean {
+  // TODO: extract BigInt calc
   let kingSideCheckMask = isWhite(activeColour)
     ? MoveConstants.KING_SIDE_CASTLING_CHECK_MASK
     : MoveConstants.KING_SIDE_CASTLING_CHECK_MASK << BigInt(8 * 7);
-  const kingSideOccupancy = isWhite(activeColour)
+  const kingSideOccupancyMask = isWhite(activeColour)
     ? MoveConstants.KING_SIDE_CASTLING_OCCUPANCY_MASK
     : MoveConstants.KING_SIDE_CASTLING_OCCUPANCY_MASK << BigInt(8 * 7);
 
-  while (kingSideCheckMask !== 0n) {
-    const idx = getLSBIndex(kingSideCheckMask)!;
-    kingSideCheckMask = clearLSB(kingSideCheckMask);
-    const isAttacked = isSquareAttacked(
-      board,
-      idx,
-      getEnemyColour(activeColour),
-    );
-
-    if (isAttacked) return false;
-  }
-  return (board.occupancy & kingSideOccupancy) === 0n;
+  // while (kingSideCheckMask !== 0n) {
+  //   const idx = getLSBIndex(kingSideCheckMask)!;
+  //   kingSideCheckMask = clearLSB(kingSideCheckMask);
+  //   const isAttacked = isSquareAttacked(
+  //     board,
+  //     idx,
+  //     getEnemyColour(activeColour),
+  //   );
+  //
+  //   if (isAttacked) return false;
+  // }
+  return (
+    (enemyAttacks & kingSideCheckMask) === 0n &&
+    (board.occupancy & kingSideOccupancyMask) === 0n
+  );
 }
-function canQueenSideCastle(board: Board, activeColour: PieceColour): boolean {
+// r3k2r/p1ppq1b1/bn1Npnp1/3P4/4P3/1pN2Q1p/PPPBBPPP/R3K2R b KQkq - 1 2
+function canQueenSideCastle(
+  board: Board,
+  activeColour: PieceColour,
+  enemyAttacks: Bitboard,
+): boolean {
   let queenSideCheckMask = isWhite(activeColour)
     ? MoveConstants.QUEEN_SIDE_CASTLING_CHECK_MASK
     : MoveConstants.QUEEN_SIDE_CASTLING_CHECK_MASK << BigInt(8 * 7);
@@ -718,32 +750,34 @@ function canQueenSideCastle(board: Board, activeColour: PieceColour): boolean {
     ? MoveConstants.QUEEN_SIDE_CASTLING_OCCUPANCY_MASK
     : MoveConstants.QUEEN_SIDE_CASTLING_OCCUPANCY_MASK << BigInt(8 * 7);
 
-  while (queenSideCheckMask !== 0n) {
-    const idx = getLSBIndex(queenSideCheckMask)!;
-    queenSideCheckMask = clearLSB(queenSideCheckMask);
-    const isAttacked = isSquareAttacked(
-      board,
-      idx,
-      getEnemyColour(activeColour),
-    );
-    if (isAttacked) return false;
-  }
-  return (board.occupancy & queenSideOccupancyMask) === 0n;
+  // while (queenSideCheckMask !== 0n) {
+  //   const idx = getLSBIndex(queenSideCheckMask)!;
+  //   queenSideCheckMask = clearLSB(queenSideCheckMask);
+  //   const isAttacked = isSquareAttacked(
+  //     board,
+  //     idx,
+  //     getEnemyColour(activeColour),
+  //   );
+  //
+  //   if (isAttacked) return false;
+  // }
+  return (
+    (enemyAttacks & queenSideCheckMask) === 0n &&
+    (board.occupancy & queenSideOccupancyMask) === 0n
+  );
 }
 
 export function generateLegalMoves(
   board: Board,
   activeColour: PieceColour = board.activeColour,
 ): Move[] {
+  const legalMoves: Move[] = [];
+  const enemyColour = getEnemyColour(activeColour);
+  const enemyAttacks = generateEnemyAttacks(board);
   pseudoTimer.startTimer();
-  const pseudoLegalMoves = generatePseudoLegalMoves(board, activeColour);
+  const pseudoLegalMoves = veryTempPseudo(board, activeColour, enemyAttacks);
   pseudoTimer.stopTimer();
 
-  // O(1)
-  const enemyColour = getEnemyColour(activeColour);
-  const legalMoves: Move[] = [];
-
-  // O(pseudoLegal)
   for (const move of pseudoLegalMoves) {
     makeMoveTimer.startTimer();
     MoveMake.makeMove(board, move);
@@ -762,4 +796,75 @@ export function generateLegalMoves(
     unmakeMoveTimer.stopTimer();
   }
   return legalMoves;
+}
+
+interface MoveCache {
+  activeKingSquare: Square;
+  activeOccupancy: Bitboard;
+  opponentOccupancy: Bitboard;
+  occupancy: Bitboard;
+  opponentAttackMask: Bitboard;
+  enPassant: Square | null;
+  captureMask: Bitboard;
+  pushMask: Bitboard;
+  attacksOnKing: Bitboard;
+  pinnedPieces: Bitboard;
+  checkRay: Bitboard;
+  checkers: Bitboard;
+  numCheckers: number;
+}
+
+export function getCache(
+  board: Board,
+  activeColour: PieceColour = board.activeColour,
+): MoveCache {
+  const kingSquare = board.getKingSquare(activeColour);
+  const activeOccupancy = board.getFriendlyOccupancyFor(activeColour);
+  const opponentOccupancy = board.getEnemyOccupancyFor(activeColour);
+  const occupancy = activeOccupancy | opponentOccupancy;
+  const targetSquares = ~activeOccupancy;
+
+  let captureMask = targetSquares;
+  let pushMask = targetSquares;
+
+  const opponentAttackMask = generateEnemyAttacks(board);
+  const pinnedPieces = queryPinnedPieces(board, occupancy);
+
+  let attacksOnKing = 0n;
+
+  let numCheckers = 0;
+  if (isBitSet64(opponentAttackMask, kingSquare)) {
+    const attacksOnKing = generateAttacksOnSquare(
+      board,
+      board.getKingSquare(activeColour),
+      getEnemyColour(activeColour),
+    );
+    const numCheckers = popCount(attacksOnKing);
+
+    if (numCheckers == 1) {
+      captureMask = attacksOnKing;
+      const pieceIdx = getLSBIndex(attacksOnKing)!;
+      if (isSlidingPiece(board.pieceAt(pieceIdx))) {
+        pushMask = computeRay(toSquare(pieceIdx), kingSquare);
+      } else {
+        pushMask = 0n;
+      }
+    }
+  }
+
+  return {
+    activeKingSquare: board.getKingSquare(activeColour),
+    activeOccupancy,
+    opponentOccupancy,
+    occupancy: activeOccupancy | opponentOccupancy,
+    opponentAttackMask,
+    enPassant: board.enPassant,
+    captureMask,
+    pushMask,
+    attacksOnKing,
+    pinnedPieces,
+    checkRay: 0n,
+    checkers: captureMask,
+    numCheckers,
+  };
 }
