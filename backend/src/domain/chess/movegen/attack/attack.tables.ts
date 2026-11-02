@@ -86,10 +86,7 @@ export const ORTHOGONAL_TABLES: SlidingTables = {
 export const KING_ATTACKS: readonly Bitboard[] =
   AttackPrecompute.precomputeKingAttackMasks();
 
-export const BETWEEN = Array.from(
-  { length: BOARD_SIZE },
-  () => new Array<Bitboard>(BOARD_SIZE),
-);
+export const BETWEEN = AttackPrecompute.precomputeBetweenRays();
 
 // contains the entire rank/file/diagonal passing through both squares
 export const LINE = Array.from(
