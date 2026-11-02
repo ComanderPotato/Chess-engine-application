@@ -36,6 +36,7 @@ import {
   shiftWest,
 } from "../move/move.bitboard.js";
 import { KNIGHT_SHIFTS } from "../move/move.directions.js";
+import { squareToBB } from "../../utils/bitboard.utils.js";
 
 /*
  * ============= attack.mask ===============
@@ -51,7 +52,7 @@ export function generateOrthogonalAttackMask(square: Square): Bitboard {
     ? NOT_CORNER_MASK
     : (getEdge(square) & NOT_CORNER_MASK) | NOT_EDGE_MASK;
   return (
-    ((1n << BigInt(square)) ^
+    (squareToBB(square) ^
       (FILE_MASKS[toFile(square)]! | RANK_MASKS[toRank(square)]!)) &
     mask
   );
@@ -72,16 +73,16 @@ export function generateSlidingAttackMask(
 }
 
 export function generateWhitePawnAttackMask(square: Square): Bitboard {
-  const bit = 1n << BigInt(square);
+  const bit = squareToBB(square);
   return shiftNorthWest(bit) | shiftNorthEast(bit);
 }
 export function generateBlackPawnAttackMask(square: Square): Bitboard {
-  const bit = 1n << BigInt(square);
+  const bit = squareToBB(square);
   return shiftSouthWest(bit) | shiftSouthEast(bit);
 }
 
 export function generateKnightAttackMask(square: Square): Bitboard {
-  const bit = 1n << BigInt(square);
+  const bit = squareToBB(square);
   return (
     // North
     (((bit & NOT_A_FILE_MASK) << KNIGHT_SHIFTS.N2W1) |
@@ -99,7 +100,7 @@ export function generateKnightAttackMask(square: Square): Bitboard {
   );
 }
 export function generateKingAttackMask(square: Square): Bitboard {
-  const bit = 1n << BigInt(square);
+  const bit = squareToBB(square);
   return (
     (shiftNorthWest(bit) |
       shiftNorth(bit) |
