@@ -28,7 +28,7 @@ export function isOnSameRank(a: Square, b: Square): boolean {
   return toRank(a) - toRank(b) === 0;
 }
 export function isOnSameDiagonal(a: Square, b: Square): boolean {
-  const fileDiff = Math.abs(toFile(a) - toFile(a));
+  const fileDiff = Math.abs(toFile(a) - toFile(b));
   const rankDiff = Math.abs(toRank(a) - toRank(b));
 
   return fileDiff === rankDiff;

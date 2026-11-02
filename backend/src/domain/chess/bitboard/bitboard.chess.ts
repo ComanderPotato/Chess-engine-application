@@ -3,7 +3,7 @@ import { isWhite } from "../piece/piece.chess.js";
 import { PIECE_COLOURS } from "../piece/piece.constants.js";
 import { Piece, PieceColour, PieceType } from "../piece/piece.types.js";
 import * as BitUtils from "../utils/bit.utils.js";
-import { pieceToIndex } from "../utils/bitboard.utils.js";
+import { pieceToIndex, squareToBB } from "../utils/bitboard.utils.js";
 import { BITBOARD_COUNT, BitboardKey } from "./bitboard.constants.js";
 
 export class Bitboards {
@@ -18,12 +18,13 @@ export class Bitboards {
   public moveBit(from: Square, to: Square): void {
     if (!BitUtils.isBitSet64(this.allOccupancy, from)) return;
     const idx = this.findOccupiedBitboardIndex(from);
-    this._bitboards[idx]! ^= (1n << BigInt(to)) | (1n << BigInt(from));
+
+    this._bitboards[idx]! ^= squareToBB(from) | squareToBB(to);
   }
   public movePieceBit(piece: Piece, from: Square, to: Square): void {
     const idx = pieceToIndex(piece);
     if (!BitUtils.isBitSet64(this._bitboards[idx]!, from)) return;
-    this._bitboards[idx]! ^= (1n << BigInt(to)) | (1n << BigInt(from));
+    this._bitboards[idx]! ^= squareToBB(from) | squareToBB(to);
   }
   public setPieceBit(piece: Piece, square: Square): void {
     if (BitUtils.isBitSet64(this.allOccupancy, square)) return;

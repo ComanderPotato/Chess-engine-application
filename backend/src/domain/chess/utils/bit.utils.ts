@@ -1,4 +1,6 @@
-import { Bitboard } from "../board/types.chess.js";
+import { Bitboard, Square } from "../board/types.chess.js";
+import { squareToBB } from "./bitboard.utils.js";
+import { toSquare } from "./square.utils.js";
 
 export type Int = bigint | number;
 export type Bit = bigint;
@@ -18,13 +20,13 @@ export function setBit32(value: number, n: number): number {
   return value | (1 << n);
 }
 export function setBit64(value: Bitboard, n: number): Bitboard {
-  return value | (1n << BigInt(n));
+  return value | squareToBB(toSquare(n));
 }
 export function clearBit32(value: number, n: number): number {
   return value & ~(1 << n);
 }
 export function clearBit64(value: Bitboard, n: number): Bitboard {
-  return value & ~(1n << BigInt(n));
+  return value & ~squareToBB(toSquare(n));
 }
 
 export function toBinary(value: bigint, bits: number = 8): string {

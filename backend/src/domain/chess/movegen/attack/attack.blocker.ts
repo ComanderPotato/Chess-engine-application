@@ -1,12 +1,14 @@
 import { BOARD_SIZE } from "@/domain/chess/board/board.constants.js";
 import { Bitboard } from "@/domain/chess/board/types.chess.js";
-import { isBitSet64 } from "@/domain/chess/utils/bit.utils.js";
+import * as BitUtils from "@/domain/chess/utils/bit.utils.js";
+import * as BitboardUtils from "../../utils/bitboard.utils.js";
+import * as SquareUtils from "../../utils/square.utils.js";
 
 // Generates an array containing relevant blocker squares of a given mask.
 export function getRelevantBlockerSquares(mask: Bitboard): number[] {
   const relevantBitIndicies: number[] = [];
   for (let bit = 0; bit < BOARD_SIZE; bit++) {
-    if (isBitSet64(mask, bit)) {
+    if (BitUtils.isBitSet64(mask, bit)) {
       relevantBitIndicies.push(bit);
     }
   }
@@ -22,7 +24,9 @@ export function getRelevantBlockerSquares(mask: Bitboard): number[] {
 // Each index in blockerConfigs should have a unique configuration of
 // set bits.
 export function generateBlockerConfigs(relevantBits: number[]) {
-  const bitMasks = relevantBits.map((bit) => 1n << BigInt(bit));
+  const bitMasks = relevantBits.map((bit) =>
+    BitboardUtils.squareToBB(SquareUtils.toSquare(bit)),
+  );
   const size = 1 << relevantBits.length; // 2 ** relevantBits.length
   const blockerConfigs: Bitboard[] = new Array(size);
 

@@ -5,7 +5,11 @@ import {
 } from "../../piece/piece.chess.js";
 import { Piece } from "../../piece/piece.types.js";
 import { setBit64, isBitSet64 } from "../../utils/bit.utils.js";
-import { isValidDirection } from "../../utils/square.utils.js";
+import { squareToBB } from "../../utils/bitboard.utils.js";
+import {
+  fileRankToSquare,
+  isValidDirection,
+} from "../../utils/square.utils.js";
 import {
   DIAGONAL_DIRECTIONS,
   Direction,
@@ -48,7 +52,9 @@ export function computeRay(from: Square, to: Square): Bitboard {
   let ray = 0n;
 
   while (file !== toFile || rank !== toRank) {
-    ray |= 1n << BigInt(rank * 8 + file);
+    // TODO: might not be correct
+    // ray |= 1n << BigInt(rank * 8 + file);
+    ray |= squareToBB(fileRankToSquare(file, rank));
     file += fileStep;
     rank += rankStep;
   }

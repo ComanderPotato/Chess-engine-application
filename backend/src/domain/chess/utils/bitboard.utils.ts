@@ -1,3 +1,4 @@
+import { SQUARE_TO_BB } from "../board/board.constants.js";
 import { Bitboard, Square } from "../board/types.chess.js";
 import { getColour, getType } from "../piece/piece.chess.js";
 import { PIECE_COLOURS } from "../piece/piece.constants.js";
@@ -8,6 +9,9 @@ export function pieceToIndex(piece: Piece): number {
   return getType(piece) - 1 + (getColour(piece) >> 4) * 6;
 }
 
+export function squareToBB(square: Square): Bitboard {
+  return SQUARE_TO_BB[square]!;
+}
 export function indexToPiece(index: number): Piece {
   if (index < 0 || index > 11) {
     throw new Error("Invalid piece index");
