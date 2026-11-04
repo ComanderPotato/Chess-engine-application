@@ -17,10 +17,17 @@ import * as MoveChess from "../movegen/move/move.chess.js";
 import * as BitUtils from "../utils/bit.utils.js";
 import * as BitboardUtils from "../utils/bitboard.utils.js";
 import * as SquareUtils from "../utils/square.utils.js";
-import { MOVE_FLAGS } from "../movegen/move/move.constants.js";
+import { MOVE_FLAGS, MoveFlag } from "../movegen/move/move.constants.js";
 import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
 import { squareToCoord } from "../utils/coord.utils.js";
-import { getEnemyColour, isWhite } from "../piece/piece.chess.js";
+import {
+  getEnemyColour,
+  getType,
+  isWhite,
+  normaliseColour,
+} from "../piece/piece.chess.js";
+import { isCaptureFlag } from "../utils/move.utils.js";
+import { CASTLING_RIGHTS_MASK } from "./board.constants.js";
 
 export interface StateInfo {
   move: Move;
@@ -36,6 +43,8 @@ export interface BoardState {
 }
 export class Board {
   private _state: StateInfo[] = [];
+  private _stateIndex = 0;
+  private _test: StateInfo[] = new Array(256).fill(null);
   public _pieceAtSquare!: Piece[];
   private _bitboards!: Bitboards;
 
@@ -79,7 +88,7 @@ export class Board {
     this.removeBit(SquareUtils.toSquare(at + offset));
   }
   get state(): StateInfo[] {
-    return this._state;
+    return this._test;
   }
   public getState(): BoardState {
     return {
@@ -91,14 +100,20 @@ export class Board {
     };
   }
   public pushState(move: Move, capturedPiece: Piece): void {
-    this._state.push({
+    this._test[this._stateIndex++] = {
       move,
       capturedPiece,
       boardState: this.getState(),
-    });
+    };
+    // this._state.push({
+    //   move,
+    //   capturedPiece,
+    //   boardState: this.getState(),
+    // });
   }
   public popState(): StateInfo | undefined {
-    return this._state.pop();
+    return this._test[--this._stateIndex];
+    // return this._state.pop();
   }
   public saveState(boardState: BoardState) {
     this._activeColour = boardState.activeColour;
@@ -263,92 +278,56 @@ export class Board {
   }
 
   // FEN UPDATE OPERATIONS
-  public updateBoardState(move: Move): void {
-    // Should be done before the move
-    this.updateHalfMoveClock(move);
-    this.updateEnPassant(move);
-    this.updateCastlingRights(move);
+  public updateBoardState(
+    from: Square,
+    to: Square,
+    flag: MoveFlag,
+    movedPiece: Piece,
+  ): void {
+    this.updateHalfMoveClock(flag, movedPiece);
+    this.updateEnPassant(from, to, flag);
+    this.updateCastlingRights(from, to);
     this.updateFullMoveClock();
     this.updateActiveColour();
 
-    this.updatePiecePlacement();
+    // this.updatePiecePlacement();
   }
-  private updateCastlingRights(move: Move): void {
+  private updateCastlingRights(from: Square, to: Square): void {
     if (this.castlingRights === 0) return;
-    const from = MoveChess.getFrom(move);
-    const to = MoveChess.getTo(move);
-
-    if (from === COORD_SQUARE_MAP.E1) {
-      this.clearWhiteKingSideCastlingRights();
-      this.clearWhiteQueenSideCastlingRights();
-      return;
-    }
-    if (from === COORD_SQUARE_MAP.E8) {
-      this.clearBlackKingSideCastlingRights();
-      this.clearBlackQueenSideCastlingRights();
-      return;
-    }
-    if (from === COORD_SQUARE_MAP.A1 || to === COORD_SQUARE_MAP.A1) {
-      this.clearWhiteQueenSideCastlingRights();
-      return;
-    }
-    if (from === COORD_SQUARE_MAP.H1 || to === COORD_SQUARE_MAP.H1) {
-      this.clearWhiteKingSideCastlingRights();
-      return;
-    }
-    if (from === COORD_SQUARE_MAP.A8 || to === COORD_SQUARE_MAP.A8) {
-      this.clearBlackQueenSideCastlingRights();
-      return;
-    }
-    if (from === COORD_SQUARE_MAP.H8 || to === COORD_SQUARE_MAP.H8) {
-      this.clearBlackKingSideCastlingRights();
-    }
+    this.castlingRights &=
+      CASTLING_RIGHTS_MASK[from] & CASTLING_RIGHTS_MASK[to];
   }
   private updatePiecePlacement(): void {}
-  private updateEnPassant(move: Move): void {
-    if (MoveChess.getFlag(move) !== MOVE_FLAGS.DoublePawnPush) {
+  private updateEnPassant(from: Square, to: Square, flag: MoveFlag): void {
+    if (flag !== MOVE_FLAGS.DoublePawnPush) {
       this.enPassant = null;
       return;
     }
-    // const isDoublePawnPush = MoveChess.getFlag(move) === MOVE_FLAGS.DoublePawnPush || null;
-    this.enPassant = SquareUtils.toSquare(
-      (MoveChess.getFrom(move) + MoveChess.getTo(move)) / 2,
-    );
-    // console.log(
-    //   squareToCoord(MoveChess.getFrom(move)),
-    //   squareToCoord(MoveChess.getTo(move)),
-    // );
-    // this.enPassant = isDoublePawnPush && SquareUtils.toSquare(
-    //   (MoveChess.getFrom(move) + MoveChess.getTo(move)) / 2,
-    // );
-    // this.enPassant = MoveChess.getFlag(move) &&
+    this.enPassant = SquareUtils.toSquare((from + to) / 2);
   }
   private updateActiveColour(): void {
     this._activeColour ^= PIECE_COLOURS.White | PIECE_COLOURS.Black;
   }
 
-  private updateHalfMoveClock(move: Move) {
-    const to = MoveChess.getTo(move);
-    const wasCapture = MoveChess.getFlag(move) === MOVE_FLAGS.Capture;
-    const wasPawnMoved = BitUtils.isBitSet64(
-      this.getOccupancy(PIECE_TYPES.Pawn),
-      to,
-    );
+  private moveClockCache: number[] = [0, 1];
+  private updateHalfMoveClock(flag: MoveFlag, movedPiece: Piece) {
+    // const to = MoveChess.getTo(move);
+
+    const wasCapture = isCaptureFlag(flag);
+    const wasPawnMoved = getType(movedPiece) === PIECE_TYPES.Pawn;
     this.halfMoveClock =
-      wasCapture || wasPawnMoved ? 0 : this.halfMoveClock + 1;
+      (this.halfMoveClock + 1) *
+      this.moveClockCache[Number(!(wasCapture || wasPawnMoved))]!;
+    // this.halfMoveClock =
+    //   wasCapture || wasPawnMoved ? 0 : this.halfMoveClock + 1;
   }
   private updateFullMoveClock() {
-    this.fullMoveClock =
-      this.activeColour === PIECE_COLOURS.Black
-        ? this.fullMoveClock + 1
-        : this.fullMoveClock;
+    this.fullMoveClock +=
+      this.moveClockCache[normaliseColour(this.activeColour)]!;
   }
 
   public pieceAt(square: Square): Piece {
     return this._pieceAtSquare[square]!;
-    // if (!BitUtils.isBitSet64(this.occupancy, square)) return PIECE_TYPES.Empty;
-    // const idx = this._bitboards.findOccupiedBitboardIndex(square);
-    // return BitboardUtils.indexToPiece(idx);
   }
   public isSquareOccupiedBy(
     square: Square,

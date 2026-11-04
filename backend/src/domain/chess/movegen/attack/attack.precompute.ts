@@ -141,7 +141,8 @@ export function precomputeBetweenRays(): Bitboard[][] {
           direction = isLowerFile ? "NW" : "NE";
         }
       }
-      BETWEEN[from]![to] = walkRay(from, direction!, squareToBB(to));
+      const bb = squareToBB(to);
+      BETWEEN[from]![to] = walkRay(from, direction!, bb);
     }
   }
   return BETWEEN;

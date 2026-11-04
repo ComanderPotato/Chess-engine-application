@@ -4,6 +4,7 @@ import * as MoveMake from "../movegen/move/move.make.js";
 import { MOVE_FLAGS } from "../movegen/move/move.constants.js";
 import { generateLegalMoves } from "../movegen/move/move.generator.js";
 import { squareToCoord } from "../utils/coord.utils.js";
+import { cacheCount } from "../movegen/move/move.cache.js";
 
 interface PerftInfo {
   nodes: number;
@@ -82,5 +83,6 @@ export function perft(board: Board, depth: number): PerftInfo {
   };
 
   info.nodes = recurse(depth);
+  console.log(cacheCount);
   return info;
 }

@@ -52,20 +52,36 @@ export function cacheEnemyBitboards(board: Board): EnemyBitboards {
 }
 
 export function queryPinnedPieces(board: Board, occupancy: Bitboard): Bitboard {
+  const activeKingSquare = board.getKingSquare(board.activeColour);
+  let kingOrthogonalAttacks = generateSlidingAttack(
+    activeKingSquare,
+    occupancy,
+    ORTHOGONAL_TABLES,
+  );
+  let kingDiagonalAttacks = generateSlidingAttack(
+    activeKingSquare,
+    occupancy,
+    DIAGONAL_TABLES,
+  );
+
+  let potentialOrthogonalPins =
+    kingOrthogonalAttacks & board.getFriendlyOccupancyFor(board.activeColour);
+
+  let potentialDiagonalPins =
+    kingDiagonalAttacks & board.getFriendlyOccupancyFor(board.activeColour);
+
+  let checkedOrthogonal =
+    kingOrthogonalAttacks & board.getEnemyOccupancyFor(board.activeColour);
+
+  let checkedDiagonal =
+    kingDiagonalAttacks & board.getEnemyOccupancyFor(board.activeColour);
+
   const orthogonalSliders =
     board.getRooks(board.opponentColour) |
-    board.getQueens(board.opponentColour);
+    (board.getQueens(board.opponentColour) & ~checkedOrthogonal);
   const diagonalSliders =
     board.getBishops(board.opponentColour) |
-    board.getQueens(board.opponentColour);
-
-  const activeKingSquare = board.getKingSquare(board.activeColour);
-  let potentialOrthogonalPins =
-    generateSlidingAttack(activeKingSquare, occupancy, ORTHOGONAL_TABLES) &
-    board.friendlyOccupancy;
-  let potentialDiagonalPins =
-    generateSlidingAttack(activeKingSquare, occupancy, DIAGONAL_TABLES) &
-    board.friendlyOccupancy;
+    (board.getQueens(board.opponentColour) & ~checkedDiagonal);
 
   let pinnedPieces = 0n;
   while (potentialOrthogonalPins !== 0n) {
@@ -166,7 +182,6 @@ export function queryPinnedRays(board: Board, occupancy: Bitboard): Bitboard {
   const opponentQueens = board.getQueens(enemyColour);
   enemySlidingAttacks |=
     generateQueenAttacks(opponentQueens, occupancy) | opponentQueens;
-  printBitboard(enemySlidingAttacks);
 
   const activeKingSquare = board.getKingSquare(board.activeColour);
   let orthogonal = generateSlidingAttack(

@@ -40,6 +40,9 @@ import {
   queryPinnedRays,
 } from "@/domain/chess/movegen/attack/attack.queries.js";
 import { perft } from "@/domain/chess/debug/perft.chess.js";
+import { getMoveCache } from "@/domain/chess/movegen/move/move.cache.js";
+import { BETWEEN } from "@/domain/chess/movegen/attack/attack.tables.js";
+import { generateAttacks } from "@/domain/chess/movegen/attack/attack.generators.js";
 
 function runPerftParams(params: string[]) {
   const fen = params.slice(0, 6).join(" ");
@@ -207,14 +210,44 @@ for (let i = 0; i < 64; i++) {
 }
 // printBitboard(RAYS[0]![8]!);
 // let pin = "3r4/b5q1/3B4/2N1P3/q1BK1P1r/2PPP3/8/bP1q2q1 w - - 0 1";
-let pin = "3r4/8/8/8/3P4/8/3K4/8 w - - 0 1";
-const board = new Board(pin);
-//
+let pin = "4k3/8/8/5R2/8/8/8/4K3 w - - 0 1";
+let a = "r4k1r/p1ppqpb1/bn2pQ2/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b KQ - 0 3";
+let b = "r4k1r/p1ppqpb1/bn2pQN1/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b KQ - 0 2";
+let c = "r2k3r/p1ppqNb1/bn2pQp1/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b KQ - 0 2";
+let d = "r1n1k2r/p1ppQpb1/b3p1p1/3PN3/1p2P3/2N4p/PPPBBPPP/R3K2R b KQkq - 0 2";
+// const board = new Board(pin);
+// printBitboard(generateAttacks(board));
+// //
+// const cache = getMoveCache(board);
+// const board = new Board(d);
+// printBitboard(queryPinnedPieces(board, board.occupancy));
+
+const board = new Board(FENS.START);
+const depth = 5;
+const timer = new Timer("Balls");
+timer.startTimer();
+const result = perft(board, depth);
+console.log(result);
+timer.stopTimer();
+Timer.timers.forEach((timer) => timer.printElapsedTime());
+// printChessBoard(board);
+// run();
+
+// for (const v in cache) {
+//   console.log("-------");
+//   console.log(v);
+//   if (typeof cache[v] === "bigint") {
+//     printBitboard(cache[v]);
+//   } else {
+//     console.log(cache[v]);
+//   }
+//   console.log("-------");
+// }
 // // // printBitboard(PINNED_RAYS[COORD_SQUARE_MAP.A1][COORD_SQUARE_MAP.A8]);
 // printChessBoard(board);
-let pinnedPieces = queryPinnedPieces(board, board.activeOccupancy);
-let pinnedRays = queryPinnedRays(board, board.occupancy & ~pinnedPieces);
-printChessBoard(board);
+// let pinnedPieces = queryPinnedPieces(board, board.activeOccupancy);
+// let pinnedRays = queryPinnedRays(board, board.occupancy & ~pinnedPieces);
+// run();
 // printChessBoard(board);
 // printBitboard(pinnedPieces);
 // printBitboard(board.occupancy & ~pinnedPieces);
@@ -251,8 +284,6 @@ printChessBoard(board);
 // );
 // //
 // printBitboard(queryPinnedPieces(board));
-
-run();
 
 // GeneratePseudoLegalMoves
 // activeOccupancy, enemyOccupancy, availableMovesSquares

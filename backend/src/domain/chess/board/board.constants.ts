@@ -1,3 +1,4 @@
+import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
 import type {
   Bit,
   Bitboard,
@@ -24,6 +25,16 @@ export const SQUARES: readonly Square[] = Array.from(
   { length: BOARD_SIZE },
   (_, square) => square as Square,
 );
+export const CASTLING_RIGHTS_MASK = Array(64).fill(0b1111);
+
+CASTLING_RIGHTS_MASK[COORD_SQUARE_MAP.E1] = 0b1100;
+CASTLING_RIGHTS_MASK[COORD_SQUARE_MAP.E8] = 0b0011;
+
+CASTLING_RIGHTS_MASK[COORD_SQUARE_MAP.A1] = 0b1101;
+CASTLING_RIGHTS_MASK[COORD_SQUARE_MAP.H1] = 0b1110;
+
+CASTLING_RIGHTS_MASK[COORD_SQUARE_MAP.A8] = 0b0111;
+CASTLING_RIGHTS_MASK[COORD_SQUARE_MAP.H8] = 0b1011;
 export const FILES = {
   A: 0,
   B: 1,
@@ -46,11 +57,13 @@ export const RANKS = {
   EIGHTH: 7,
 } as const;
 
+export const SQUARE_TO_BIGINT = Array.from({ length: 64 }, (_, square) =>
+  BigInt(square),
+);
 export const SQUARE_TO_BB: Bitboard[] = Array.from(
   { length: BOARD_SIZE },
-  (_, square) => 1n << BigInt(square),
+  (_, square) => 1n << SQUARE_TO_BIGINT[square]!,
 ) as Bitboard[];
-
 export const RANK_MASKS: ReadonlyBitboards = Array.from(
   { length: RANK_SIZE },
   (_, rank) => SINGLE_RANK_MASK << BigInt(rank * RANK_SIZE),
@@ -66,3 +79,5 @@ export const NOT_H_FILE_MASK: Bitboard = ~FILE_MASKS[7]! & BOARD_MASK;
 
 export const NOT_AB_FILES_MASK: Bitboard = NOT_A_FILE_MASK ^ FILE_MASKS[1]!;
 export const NOT_GH_FILES_MASK: Bitboard = NOT_H_FILE_MASK ^ FILE_MASKS[6]!;
+export const FIRST_TO_LAST_RANK_BB =
+  SQUARE_TO_BIGINT[BOARD_DIMENSION * RANKS.EIGHTH]!;

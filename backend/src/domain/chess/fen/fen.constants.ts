@@ -43,6 +43,8 @@ export const FENS = {
   /** Stalemate */
   STALEMATE: "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1",
 
+  EN_PASSANT_PIN: "k7/8/8/r3pP1K/8/8/8/8 w - f6 0 1",
+
   /** Famous move-generation validation position */
   KIWIPETE:
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",

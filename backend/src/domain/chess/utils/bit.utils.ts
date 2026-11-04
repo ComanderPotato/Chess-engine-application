@@ -1,3 +1,4 @@
+import { SQUARE_TO_BIGINT } from "../board/board.constants.js";
 import { Bitboard, Square } from "../board/types.chess.js";
 import { squareToBB } from "./bitboard.utils.js";
 import { toSquare } from "./square.utils.js";
@@ -14,7 +15,7 @@ export function isBitSet32(value: number, n: number): boolean {
   return ((value >> n) & 1) !== 0;
 }
 export function isBitSet64(value: Bitboard, n: number): boolean {
-  return ((value >> BigInt(n)) & 1n) !== 0n;
+  return ((value >> SQUARE_TO_BIGINT[n]!) & 1n) !== 0n;
 }
 export function setBit32(value: number, n: number): number {
   return value | (1 << n);

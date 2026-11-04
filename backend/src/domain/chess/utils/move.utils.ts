@@ -69,6 +69,7 @@ export function encodePawnMove({
   }
 
   let flag: MoveFlag = MOVE_FLAGS.Quiet;
+
   if (SquareUtils.isEnPassantSquare(board.enPassant, to)) {
     flag = MOVE_FLAGS.EnPassantCapture;
   } else if (isCapture) {
@@ -79,17 +80,20 @@ export function encodePawnMove({
   moves.push(MoveChess.createMove(from, to, flag));
 }
 
+const STANDARD_MOVE_FLAGS = [MOVE_FLAGS.Quiet, MOVE_FLAGS.Capture];
 export function encodeStandardMove({
   board,
   from,
   to,
   moves,
 }: IMoveConstruct): void {
-  if (board.isOccupied(to)) {
-    moves.push(MoveChess.createMove(from, to, MOVE_FLAGS.Capture));
-  } else {
-    moves.push(MoveChess.createMove(from, to, MOVE_FLAGS.Quiet));
-  }
+  moves.push(
+    MoveChess.createMove(
+      from,
+      to,
+      STANDARD_MOVE_FLAGS[Number(board.pieceAt(to) !== PIECE_TYPES.Empty)]!,
+    ),
+  );
 }
 export function encodeKingMove({
   board,

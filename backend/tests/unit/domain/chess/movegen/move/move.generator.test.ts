@@ -73,15 +73,15 @@ describe("move.generator", () => {
         console.log(board.enPassant);
       });
     });
-    describe.skip(TestMoveGenerator.generatePseudoLegalMoves.name, () => {
-      it.each([
-        { colour: PIECE_COLOURS.White, name: "white" },
-        { colour: PIECE_COLOURS.Black, name: "black" },
-      ])("generates 20 pseudo legal moves for $name", ({ colour }) => {
-        const board = new Board();
-        const moves = TestMoveGenerator.generatePseudoLegalMoves(board, colour);
-        // expect(moves).toHaveLength(20);
-      });
+    // describe.skip(TestMoveGenerator.generatePseudoLegalMoves.name, () => {
+    //   it.each([
+    //     { colour: PIECE_COLOURS.White, name: "white" },
+    //     { colour: PIECE_COLOURS.Black, name: "black" },
+    //   ])("generates 20 pseudo legal moves for $name", ({ colour }) => {
+    //     const board = new Board();
+    //     const moves = TestMoveGenerator.generatePseudoLegalMoves(board, colour);
+    //     // expect(moves).toHaveLength(20);
+    //   });
       // it("test", () => {
       //   const board = new Board();
       //   const moves = TestMoveGenerator.generatePseudoLegalMoves(board);

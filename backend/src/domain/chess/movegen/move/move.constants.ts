@@ -1,3 +1,5 @@
+import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
+
 export const MOVE_FROM_BITS = 6;
 export const MOVE_TO_BITS = 6;
 export const MOVE_FLAG_BITS = 5;
@@ -53,3 +55,7 @@ export const KING_SIDE_CASTLING_CHECK_MASK = 0b01110000n;
 export const KING_SIDE_CASTLING_OCCUPANCY_MASK = 0b01100000n;
 export const QUEEN_SIDE_CASTLING_CHECK_MASK = 0b00011100n;
 export const QUEEN_SIDE_CASTLING_OCCUPANCY_MASK = 0b00001110n;
+export const ROOK_CASTLE_POSITIONS = [
+  [COORD_SQUARE_MAP.H1, COORD_SQUARE_MAP.F1],
+  [COORD_SQUARE_MAP.A1, COORD_SQUARE_MAP.D1],
+] as const;

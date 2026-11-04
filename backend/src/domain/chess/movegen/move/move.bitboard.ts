@@ -2,6 +2,7 @@ import {
   NOT_A_FILE_MASK,
   NOT_H_FILE_MASK,
   BOARD_MASK,
+  SQUARE_TO_BIGINT,
 } from "../../board/board.constants.js";
 
 import { Bitboard } from "../../board/types.chess.js";
@@ -35,14 +36,14 @@ export function shiftRight(
   n: number,
   mask: Bitboard = BOARD_MASK,
 ): Bitboard {
-  return ((bb & mask) << BigInt(n)) & BOARD_MASK;
+  return ((bb & mask) << SQUARE_TO_BIGINT[n]!) & BOARD_MASK;
 }
 export function shiftLeft(
   bb: Bitboard,
   n: number,
   mask: Bitboard = BOARD_MASK,
 ): Bitboard {
-  return (bb & mask) >> BigInt(n);
+  return (bb & mask) >> SQUARE_TO_BIGINT[n]!;
 }
 // export function shiftRight(bb: Bitboard, n: number) {
 //   return bb << BigInt(n);

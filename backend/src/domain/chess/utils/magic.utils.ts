@@ -1,4 +1,4 @@
-import { BOARD_MASK } from "../board/board.constants.js";
+import { BOARD_MASK, SQUARE_TO_BIGINT } from "../board/board.constants.js";
 import { Bitboard } from "../board/types.chess.js";
 import crypto from "crypto";
 
@@ -9,17 +9,17 @@ export function computeIndex(
 ): number {
   blockerMask *= magic;
   blockerMask &= BOARD_MASK;
-  blockerMask >>= BigInt(shift);
+  blockerMask >>= SQUARE_TO_BIGINT[shift]!;
   return Number(blockerMask);
 }
-
-function random64(): bigint {
-  crypto.randomBytes;
-  return (
-    (BigInt(Math.floor(Math.random() * 0x100000000)) << 32n) |
-    BigInt(Math.floor(Math.random() * 0x100000000))
-  );
-}
+//
+// function random64(): bigint {
+//   crypto.randomBytes;
+//   return (
+//     (BigInt(Math.floor(Math.random() * 0x100000000)) << 32n) |
+//     BigInt(Math.floor(Math.random() * 0x100000000))
+//   );
+// }
 export function randomMagic(): bigint {
   return random64() & random64() & random64();
 }
@@ -33,4 +33,22 @@ export function randomBigint() {
 }
 export function randomSparseBigint() {
   return randomBigint() & randomBigint() & randomBigint();
+}
+export function a(
+  blockerMask: Bitboard,
+  magic: Bitboard,
+  shift: number,
+): number {
+  blockerMask *= magic;
+  blockerMask &= BOARD_MASK;
+  blockerMask >>= SQUARE_TO_BIGINT[shift]!;
+  return Number(blockerMask);
+}
+
+function random64(): bigint {
+  crypto.randomBytes;
+  return (
+    (SQUARE_TO_BIGINT[Math.floor(Math.random() * 0x100000000)]! << 32n) |
+    SQUARE_TO_BIGINT[Math.floor(Math.random() * 0x100000000)]!
+  );
 }

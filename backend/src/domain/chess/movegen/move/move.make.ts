@@ -1,33 +1,59 @@
-import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
 import { Board } from "../../board/board.chess.js";
 import { RANKS } from "../../board/board.constants.js";
 import { Square } from "../../board/types.chess.js";
-import { getEnemyColour } from "../../piece/piece.chess.js";
+import { Timer } from "../../debug/timer.debug.js";
 import { PIECE_COLOURS, PIECE_TYPES } from "../../piece/piece.constants.js";
+import { pieceToProperty } from "../../piece/piece.notation.js";
 import { Piece, PieceColour, PieceType } from "../../piece/piece.types.js";
 import * as MoveUtils from "../../utils/move.utils.js";
 import { isEnpassantMove } from "../../utils/move.utils.js";
 import { toRank, toSquare } from "../../utils/square.utils.js";
 import * as MoveChess from "./move.chess.js";
-import { MOVE_FLAGS, MoveFlag } from "./move.constants.js";
+import {
+  MOVE_FLAGS,
+  MoveFlag,
+  ROOK_CASTLE_POSITIONS,
+} from "./move.constants.js";
 import { Move } from "./move.types.js";
 
+// const updateBoardStateTimer = new Timer("Update board state");
+// const promote = new Timer("Make Promotion");
+// const enPassant = new Timer("Make Enpassant");
+// const castle = new Timer("Make Castle");
+// const moveAndRemove = new Timer("Move and remove");
+// const statePush = new Timer("State push");
 export function makeMove(board: Board, move: Move): void {
+  // statePush.startTimer();
   board.pushState(move, getCapturedPiece(board, move));
+  // statePush.stopTimer();
+  // moveAndRemove.startTimer();
+
   const from = MoveChess.getFrom(move);
   const to = MoveChess.getTo(move);
   const flag = MoveChess.getFlag(move);
   const movedPiece = board.pieceAt(from);
   const capturedPiece = board.pieceAt(to);
 
-  capturedPiece !== PIECE_TYPES.Empty && board.removePiece(capturedPiece, to);
+  if (capturedPiece !== PIECE_TYPES.Empty) board.removePiece(capturedPiece, to);
   board.movePiece(movedPiece, from, to);
-  MoveUtils.isPromotionFlag(flag) &&
+  // moveAndRemove.stopTimer();
+  if (MoveUtils.isPromotionFlag(flag)) {
+    // promote.startTimer();
     promotePiece(board, to, getPromotionPiece(move));
-  MoveUtils.isEnpassantFlag(flag) && captureEnpassant(board, from, to);
-  MoveUtils.isCastlingFlag(flag) && castleKing(board, flag);
+    // promote.stopTimer();
+  } else if (MoveUtils.isEnpassantFlag(flag)) {
+    // enPassant.startTimer();
+    captureEnpassant(board, from, to);
+    // enPassant.stopTimer();
+  } else if (MoveUtils.isCastlingFlag(flag)) {
+    // castle.startTimer();
+    castleKing(board, flag);
+    // castle.stopTimer();
+  }
 
-  board.updateBoardState(move);
+  // updateBoardStateTimer.startTimer();
+  board.updateBoardState(from, to, flag, movedPiece);
+  // updateBoardStateTimer.stopTimer();
 }
 
 export function unmakeMove(board: Board): void {
@@ -38,9 +64,11 @@ export function unmakeMove(board: Board): void {
   const flag = MoveChess.getFlag(previousState.move);
 
   const previousColour = previousState.boardState.activeColour;
-  MoveUtils.isPromotionFlag(flag) && unPromotePiece(board, to, previousColour);
-  MoveUtils.isCastlingFlag(flag) && unCastleKing(board, flag, previousColour);
-
+  if (MoveUtils.isPromotionFlag(flag)) {
+    unPromotePiece(board, to, previousColour);
+  } else if (MoveUtils.isCastlingFlag(flag)) {
+    unCastleKing(board, flag, previousColour);
+  }
   board.moveBit(to, from);
 
   if (previousState.capturedPiece !== PIECE_TYPES.Empty) {
@@ -64,27 +92,23 @@ function unCastleKing(
   previousColour: PieceColour,
 ): void {
   const rankShift = (previousColour - PIECE_COLOURS.White) * RANKS.EIGHTH;
-  const [rookfrom, rookTo] =
-    flag === MOVE_FLAGS.KingCastle
-      ? [COORD_SQUARE_MAP.F1, COORD_SQUARE_MAP.H1]
-      : [COORD_SQUARE_MAP.D1, COORD_SQUARE_MAP.A1];
-
+  const [rookTo, rookFrom] =
+    ROOK_CASTLE_POSITIONS[flag - MOVE_FLAGS.KingCastle]!;
   board.movePiece(
     PIECE_TYPES.Rook | previousColour,
-    toSquare(rookfrom + rankShift),
+    toSquare(rookFrom + rankShift),
     toSquare(rookTo + rankShift),
   );
 }
 function castleKing(board: Board, flag: MoveFlag): void {
   const rankShift = (board.activeColour - PIECE_COLOURS.White) * RANKS.EIGHTH;
-  const [rookfrom, rookTo] =
-    flag === MOVE_FLAGS.KingCastle
-      ? [COORD_SQUARE_MAP.H1, COORD_SQUARE_MAP.F1]
-      : [COORD_SQUARE_MAP.A1, COORD_SQUARE_MAP.D1];
+
+  const [rookFrom, rookTo] =
+    ROOK_CASTLE_POSITIONS[flag - MOVE_FLAGS.KingCastle]!;
 
   board.movePiece(
     PIECE_TYPES.Rook | board.activeColour,
-    toSquare(rookfrom + rankShift),
+    toSquare(rookFrom + rankShift),
     toSquare(rookTo + rankShift),
   );
 }
@@ -98,55 +122,15 @@ function unPromotePiece(
 }
 function promotePiece(board: Board, at: Square, promotionPiece: Piece): void {
   board.removePiece(PIECE_TYPES.Pawn | board.activeColour, at);
-  board.setPiece(promotionPiece | board.activeColour, at);
+  board.setPiece(
+    promotionPiece | board.activeColour | pieceToProperty(promotionPiece),
+    at,
+  );
 }
 
 function captureEnpassant(board: Board, from: Square, to: Square): void {
   const rankDiff = toRank(from) - toRank(to);
   board.removeBit(toSquare(to + 8 * rankDiff));
-}
-function unCaptureEnpassant(board: Board, from: Square, to: Square): void {
-  const rankDiff = toRank(to) - toRank(from);
-  board.setPiece(
-    PIECE_TYPES.Pawn | getEnemyColour(board.activeColour),
-    toSquare(to + 8 * rankDiff),
-  );
-}
-
-function makeCastle(board: Board, move: Move): void {
-  const colour = board.activeColour;
-  // const colourShift = BigInt((colour - PIECE_COLOURS.White) * RANKS.EIGHTH);
-  const rankShift = (colour - PIECE_COLOURS.White) * RANKS.EIGHTH;
-  const flag = MoveChess.getFlag(move);
-  // const kingMask =
-  //   (flag === MOVE_FLAGS.KingCastle
-  //     ? KING_SIDE_CASTLE_KING_MASK
-  //     : QUEEN_SIDE_CASTLE_KING_MASK) << colourShift;
-  //
-  // const rookMask =
-  //   (flag === MOVE_FLAGS.KingCastle
-  //     ? KING_SIDE_CASTLE_ROOK_MASK
-  //     : QUEEN_SIDE_CASTLE_ROOK_MASK) << colourShift;
-  const kingPosition =
-    flag === MOVE_FLAGS.KingCastle
-      ? [COORD_SQUARE_MAP.E1, COORD_SQUARE_MAP.G1]
-      : [COORD_SQUARE_MAP.E1, COORD_SQUARE_MAP.C1];
-  const rookPosition =
-    flag === MOVE_FLAGS.KingCastle
-      ? [COORD_SQUARE_MAP.H1, COORD_SQUARE_MAP.F1]
-      : [COORD_SQUARE_MAP.A1, COORD_SQUARE_MAP.D1];
-  board.movePiece(
-    PIECE_TYPES.King | colour,
-    toSquare(kingPosition[0]! + rankShift),
-    toSquare(kingPosition[1]! + rankShift),
-  );
-  board.movePiece(
-    PIECE_TYPES.Rook | colour,
-    toSquare(rookPosition[0]! + rankShift),
-    toSquare(rookPosition[1]! + rankShift),
-  );
-  // board.bitboards.toggleBits(PIECE_TYPES.King | colour, kingMask);
-  // board.bitboards.toggleBits(PIECE_TYPES.Rook | colour, rookMask);
 }
 
 function calcEnpassantSquare(from: Square, to: Square): Square {
