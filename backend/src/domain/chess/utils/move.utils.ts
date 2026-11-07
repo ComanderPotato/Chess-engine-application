@@ -1,5 +1,5 @@
 import { Board } from "../board/board.chess.js";
-import { RANK_MASKS, RANKS } from "../board/board.constants.js";
+import { BOARD_SIZE, RANK_MASKS, RANKS } from "../board/board.constants.js";
 import { Bitboard, Square } from "../board/types.chess.js";
 import { shiftNorth, shiftSouth } from "../movegen/move/move.bitboard.js";
 import * as MoveChess from "../movegen/move/move.chess.js";
@@ -52,19 +52,71 @@ export function isPromotionFlag(flag: MoveFlag): boolean {
   return (flag & MOVE_PROMOTION_FLAG) === MOVE_PROMOTION_FLAG;
 }
 
+const PAWN_MOVES_CACHE = Array.from({ length: BOARD_SIZE }, (_, from) =>
+  Array.from({ length: BOARD_SIZE }, (_, to) => {
+    const fromSquare = SquareUtils.toSquare(from);
+    const toSquare = SquareUtils.toSquare(to);
+    const fromRank = SquareUtils.toRank(fromSquare);
+    const toRank = SquareUtils.toRank(toSquare);
+    const fromFile = SquareUtils.toFile(fromSquare);
+    const toFile = SquareUtils.toFile(toSquare);
+    const rankDiff = Math.abs(fromRank - toRank);
+    const fileDiff = Math.abs(fromFile - toFile);
+    if (
+      (fromRank === RANKS.SECOND && toRank === RANKS.FIRST) ||
+      (fromRank === RANKS.SEVENTH && toRank === RANKS.EIGHTH)
+    ) {
+      if (fileDiff === 0) {
+        return PROMOTION_FLAGS.map((flag) =>
+          MoveChess.createMove(
+            SquareUtils.toSquare(from),
+            SquareUtils.toSquare(to),
+            flag,
+          ),
+        );
+      } else if (fileDiff === 1) {
+        return PROMOTION_CAPTURE_FLAGS.map((flag) =>
+          MoveChess.createMove(
+            SquareUtils.toSquare(from),
+            SquareUtils.toSquare(to),
+            flag,
+          ),
+        );
+      } else {
+        return [];
+      }
+    }
+    if (
+      (fromRank === RANKS.SECOND && toRank === RANKS.FOURTH) ||
+      (fromRank === RANKS.SEVENTH && toRank === RANKS.FIFTH)
+    ) {
+      return [
+        MoveChess.createMove(fromSquare, toSquare, MOVE_FLAGS.DoublePawnPush),
+      ];
+    }
+    if (rankDiff === 1) {
+      if (fileDiff === 0) {
+        return [MoveChess.createMove(fromSquare, toSquare, MOVE_FLAGS.Quiet)];
+      } else {
+        return [MoveChess.createMove(fromSquare, toSquare, MOVE_FLAGS.Capture)];
+      }
+    }
+  }),
+);
+const PROMOTION_CACHE = [PROMOTION_FLAGS, PROMOTION_CAPTURE_FLAGS];
 export function encodePawnMove({
   board,
   from,
   to,
   moves,
 }: IMoveConstruct): void {
+  // moves.push(...PAWN_MOVES_CACHE[from]![to]!);
   const isCapture = board.isOccupied(to);
 
   if (SquareUtils.isPromotionSquare(to)) {
-    const flags = isCapture ? PROMOTION_CAPTURE_FLAGS : PROMOTION_FLAGS;
-    for (const flag of flags) {
-      moves.push(MoveChess.createMove(from, to, flag));
-    }
+    PROMOTION_CACHE[Number(isCapture)]!.forEach((flag) =>
+      moves.push(MoveChess.createMove(from, to, flag)),
+    );
     return;
   }
 
