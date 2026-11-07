@@ -340,7 +340,8 @@ export class Board {
     return BitUtils.isBitSet64(bitboard, square);
   }
   public isOccupied(at: Square): boolean {
-    return this._bitboards.isOccupied(at);
+    return this._pieceAtSquare[at]! !== PIECE_TYPES.Empty;
+    // return this._bitboards.isOccupied(at);
   }
   public setPiece(piece: Piece, to: Square): void {
     this.setSquare(piece, to);
