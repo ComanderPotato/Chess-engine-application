@@ -2,6 +2,7 @@ import { Bitboards } from "../bitboard/bitboard.chess.js";
 import { Board } from "../board/board.chess.js";
 import {
   BOARD_SIZE,
+  COORD_SQUARE_MAP,
   FILE_SIZE,
   FILES,
   RANKS,
@@ -17,7 +18,6 @@ import {
 } from "../piece/piece.constants.js";
 import { fileRankToSquare } from "../utils/square.utils.js";
 import { castlingBits } from "./fen.constants.js";
-import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
 
 interface ParsedPiecePlacement {
   bitboards: Bitboards;

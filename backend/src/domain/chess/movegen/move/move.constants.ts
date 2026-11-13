@@ -1,4 +1,5 @@
-import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
+import { COORD_SQUARE_MAP } from "../../board/board.constants.js";
+import { bigintToBitboard } from "../../utils/bitboard.utils.js";
 
 export const MOVE_FROM_BITS = 6;
 export const MOVE_TO_BITS = 6;
@@ -51,10 +52,10 @@ export const PROMOTION_CAPTURE_FLAGS = [
 
 export type MoveFlag = (typeof MOVE_FLAGS)[keyof typeof MOVE_FLAGS];
 
-export const KING_SIDE_CASTLING_CHECK_MASK = 0b01110000n;
-export const KING_SIDE_CASTLING_OCCUPANCY_MASK = 0b01100000n;
-export const QUEEN_SIDE_CASTLING_CHECK_MASK = 0b00011100n;
-export const QUEEN_SIDE_CASTLING_OCCUPANCY_MASK = 0b00001110n;
+export const KING_SIDE_CASTLING_CHECK_MASK = bigintToBitboard(0b01110000n);
+export const KING_SIDE_CASTLING_OCCUPANCY_MASK = bigintToBitboard(0b01100000n);
+export const QUEEN_SIDE_CASTLING_CHECK_MASK = bigintToBitboard(0b00011100n);
+export const QUEEN_SIDE_CASTLING_OCCUPANCY_MASK = bigintToBitboard(0b00001110n);
 export const ROOK_CASTLE_POSITIONS = [
   [COORD_SQUARE_MAP.H1, COORD_SQUARE_MAP.F1],
   [COORD_SQUARE_MAP.A1, COORD_SQUARE_MAP.D1],

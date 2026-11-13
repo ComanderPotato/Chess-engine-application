@@ -8,7 +8,7 @@ import * as SquareUtils from "../../utils/square.utils.js";
 export function getRelevantBlockerSquares(mask: Bitboard): number[] {
   const relevantBitIndicies: number[] = [];
   for (let bit = 0; bit < BOARD_SIZE; bit++) {
-    if (BitUtils.isBitSet64(mask, bit)) {
+    if (BitUtils.isBitSet(mask, bit)) {
       relevantBitIndicies.push(bit);
     }
   }
@@ -31,11 +31,12 @@ export function generateBlockerConfigs(relevantBits: number[]) {
   const blockerConfigs: Bitboard[] = new Array(size);
 
   for (let blockerIndex = 0; blockerIndex < size; blockerIndex++) {
-    let blocker = 0n;
+    let blocker: Bitboard = [0, 0];
     let index = blockerIndex;
     for (let i = 0; i < bitMasks.length && index > 0; i++) {
       if ((index & 1) !== 0) {
-        blocker |= bitMasks[i]!;
+        blocker = BitboardUtils.OR(blocker, bitMasks[i]!);
+        // blocker |= bitMasks[i]!;
       }
       index >>= 1;
     }

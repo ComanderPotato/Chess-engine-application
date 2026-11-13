@@ -1,5 +1,7 @@
 // import { PieceType } from "./piece.chess.js";
 
+import { Piece, PieceType } from "./piece.types.js";
+
 export const PIECE_TYPE_BITS = 3;
 export const PIECE_COLOUR_BITS = 2;
 export const PIECE_PROPERTIES_BITS = 3;
@@ -38,6 +40,19 @@ export const PIECE_PROPERTIES = {
   Orthogonal: 64,
   Diagonal: 128,
 } as const;
+
+export const PIECES: Piece[] = [
+  PIECE_TYPES.Empty,
+  PIECE_TYPES.Pawn,
+  PIECE_TYPES.Knight,
+  PIECE_TYPES.Bishop | PIECE_PROPERTIES.Diagonal | PIECE_PROPERTIES.Sliding,
+  PIECE_TYPES.Rook | PIECE_PROPERTIES.Orthogonal | PIECE_PROPERTIES.Sliding,
+  PIECE_TYPES.Queen |
+    PIECE_PROPERTIES.Diagonal |
+    PIECE_PROPERTIES.Orthogonal |
+    PIECE_PROPERTIES.Sliding,
+  PIECE_TYPES.King,
+] as const;
 
 export const NotationToPiece = {
   // _: PieceType.Empty,

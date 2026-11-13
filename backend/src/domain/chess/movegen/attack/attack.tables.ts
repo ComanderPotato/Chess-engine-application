@@ -13,6 +13,7 @@ import {
   DIAGONAL_MAGICS_PRECOMPUTE,
   DIAGONAL_SHIFTS_PRECOMPUTE,
 } from "../magic/diagonal.magic.js";
+import { bigintToBitboard } from "../../utils/bitboard.utils.js";
 // import { shiftRight } from "../move/move.bitboard.js";
 // import {
 //   blackDoublePush,
@@ -58,11 +59,11 @@ const DIAGONAL_MASKS: Bitboard[] =
 export const DIAGONAL_TABLES: SlidingTables = {
   MASKS: DIAGONAL_MASKS,
   SHIFTS: DIAGONAL_SHIFTS_PRECOMPUTE,
-  MAGICS: DIAGONAL_MAGICS_PRECOMPUTE,
+  MAGICS: DIAGONAL_MAGICS_PRECOMPUTE.map((a) => bigintToBitboard(a)),
   ATTACKS: AttackPrecompute.precomputeSlidingAttackTables(
     DIAGONAL_MASKS,
     DIAGONAL_SHIFTS_PRECOMPUTE,
-    DIAGONAL_MAGICS_PRECOMPUTE,
+    DIAGONAL_MAGICS_PRECOMPUTE.map((a) => bigintToBitboard(a)),
     PIECE_PROPERTIES.Diagonal,
   ),
 };
@@ -73,11 +74,11 @@ const ORTHOGONAL_MASKS: Bitboard[] =
 export const ORTHOGONAL_TABLES: SlidingTables = {
   MASKS: ORTHOGONAL_MASKS,
   SHIFTS: ORTHOGONAL_SHIFTS_PRECOMPUTE,
-  MAGICS: ORTHOGONAL_MAGICS_PRECOMPUTE,
+  MAGICS: ORTHOGONAL_MAGICS_PRECOMPUTE.map((a) => bigintToBitboard(a)),
   ATTACKS: AttackPrecompute.precomputeSlidingAttackTables(
     ORTHOGONAL_MASKS,
     ORTHOGONAL_SHIFTS_PRECOMPUTE,
-    ORTHOGONAL_MAGICS_PRECOMPUTE,
+    ORTHOGONAL_MAGICS_PRECOMPUTE.map((a) => bigintToBitboard(a)),
     PIECE_PROPERTIES.Orthogonal,
   ),
 };

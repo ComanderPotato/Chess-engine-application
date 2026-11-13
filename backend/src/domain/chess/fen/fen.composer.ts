@@ -4,7 +4,7 @@ import { CastlingRights, EnPassant } from "../board/types.chess.js";
 import { PIECE_COLOURS, PIECE_TYPES } from "../piece/piece.constants.js";
 import { pieceToNotation } from "../piece/piece.notation.js";
 import { PieceColour } from "../piece/piece.types.js";
-import { isBitSet32, isBitSet64 } from "../utils/bit.utils.js";
+import { isBitSet32, isBitSet } from "../utils/bit.utils.js";
 import { squareToCoord } from "../utils/coord.utils.js";
 import { fileRankToSquare } from "../utils/square.utils.js";
 import { castlingBits } from "./fen.constants.js";
@@ -32,13 +32,13 @@ export function composePiecePlacement(board: Board): string {
   let fen = "";
 
   for (let rank: number = RANKS.EIGHTH; rank >= RANKS.FIRST; rank--) {
-    for (let file = FILES.A; file <= FILES.H; ) {
+    for (let file = FILES.A; file <= FILES.H;) {
       const piece = board.pieceAt(fileRankToSquare(file, rank));
       if (piece === PIECE_TYPES.Empty) {
         let count = 0;
         while (
           file <= FILES.H &&
-          !isBitSet64(board.occupancy, fileRankToSquare(file, rank))
+          !isBitSet(board.occupancy, fileRankToSquare(file, rank))
         ) {
           count++;
           file++;

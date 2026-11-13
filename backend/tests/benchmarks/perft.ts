@@ -8,41 +8,35 @@ import {
 import { pieceToString } from "@/domain/chess/piece/piece.format.js";
 import { getEnemyColour } from "@/domain/chess/piece/piece.chess.js";
 import { Timer } from "@/domain/chess/debug/timer.debug.js";
-import {
-  BOARD_SIZE,
-  FULL_BOARD_MASK,
-} from "@/domain/chess/board/board.constants.js";
-import {
-  isOnSameDiagonal,
-  isOnSameFile,
-  isOnSameRank,
-  toFile,
-  toRank,
-  toSquare,
-} from "@/domain/chess/utils/square.utils.js";
-import { Bitboard, Square } from "@/domain/chess/board/types.chess.js";
-import { Direction } from "@/domain/chess/movegen/move/move.directions.js";
-import { walkRay } from "@/domain/chess/movegen/attack/attack.rays.js";
+import { BOARD_SIZE } from "@/domain/chess/board/board.constants.js";
+import { Bitboard } from "@/domain/chess/board/types.chess.js";
 
-import { COORD_SQUARE_MAP } from "#/fixtures/chess/square.fixtures.js";
 import { Board } from "@/domain/chess/board/board.chess.js";
 import { FENS } from "@/domain/chess/fen/fen.constants.js";
 import {
   printBitboard,
   printChessBoard,
 } from "@/domain/chess/debug/printer.chess.js";
-import { getFrom, getTo } from "@/domain/chess/movegen/move/move.chess.js";
-import { decodeMove } from "@/domain/chess/movegen/move/move.debug.js";
-import { generateLegalMoves } from "@/domain/chess/movegen/move/move.generator.js";
-import { makeMove } from "@/domain/chess/movegen/move/move.make.js";
 import {
-  queryPinnedPieces,
-  queryPinnedRays,
-} from "@/domain/chess/movegen/attack/attack.queries.js";
+  createMove,
+  getFrom,
+  getTo,
+} from "@/domain/chess/movegen/move/move.chess.js";
+import { decodeMove } from "@/domain/chess/movegen/move/move.debug.js";
+import {
+  generateLegalMoves,
+  generatePawnMoves,
+  generatePseudoLegalMoves,
+} from "@/domain/chess/movegen/move/move.generator.js";
+import { makeMove, unmakeMove } from "@/domain/chess/movegen/move/move.make.js";
 import { perft } from "@/domain/chess/debug/perft.chess.js";
 import { getMoveCache } from "@/domain/chess/movegen/move/move.cache.js";
-import { BETWEEN } from "@/domain/chess/movegen/attack/attack.tables.js";
-import { generateAttacks } from "@/domain/chess/movegen/attack/attack.generators.js";
+import { AND, NOT, pieceToIndex } from "@/domain/chess/utils/bitboard.utils.js";
+import { MOVE_FLAGS } from "@/domain/chess/movegen/move/move.constants.js";
+import { filterEnpassant } from "@/domain/chess/movegen/attack/attack.queries.js";
+import { BENCHMARKS } from "./benchmarks.js";
+import { PIECE_TYPES } from "@/domain/chess/piece/piece.constants.js";
+import { minmax } from "@/domain/chess/engine/minmax.chess.js";
 
 function runPerftParams(params: string[]) {
   const fen = params.slice(0, 6).join(" ");
@@ -111,7 +105,9 @@ async function run() {
         board.loadFen(query.slice(1).join(" "));
         moves = null;
         break;
-
+      case "unmake":
+        unmakeMove(board);
+        break;
       case "moves":
         if (!moves) moves = generateLegalMoves(board);
 
@@ -174,116 +170,135 @@ async function run() {
   rl.close();
 }
 
-export const RAYS = Array.from(
-  { length: BOARD_SIZE },
-  () => new Array<Bitboard>(BOARD_SIZE),
-);
-function calcPinnedRay(kingSquare: Square, attackingSquare: Square): bigint {
-  if (kingSquare === attackingSquare) return FULL_BOARD_MASK;
-  const onSameFile = isOnSameFile(kingSquare, attackingSquare);
-  const onSameRank = isOnSameRank(kingSquare, attackingSquare);
-  const onSameDiagonal = isOnSameDiagonal(kingSquare, attackingSquare);
-  if (!onSameFile && !onSameRank && !onSameDiagonal) return FULL_BOARD_MASK;
+function bitboardToBigint(bb: Bitboard) {
+  return BigInt(bb[0] >>> 0) | (BigInt(bb[1] >>> 0) << 32n);
+}
+function profile() {
+  const board = new Board(FENS.START);
 
-  const isKingSquareLess = kingSquare < attackingSquare;
-  const isLowerRank = toRank(kingSquare) > toRank(attackingSquare);
-  const isLowerFile = toFile(kingSquare) > toFile(attackingSquare);
-  let direction: Direction;
+  const depth = 5;
+  const timer = new Timer("Balls");
+  timer.startTimer();
+  const result = perft(board, depth);
+  console.log(result);
+  timer.stopTimer();
+  Timer.timers.forEach((timer) => timer.printElapsedTime());
+}
+// const board = new Board(FENS.KIWIPETE);
+// console.log(minmax(board, 3));
+// profile();
 
-  if (onSameFile) {
-    direction = isKingSquareLess ? "N" : "S";
-  } else if (onSameRank) {
-    direction = isKingSquareLess ? "E" : "W";
-  } else if (onSameDiagonal) {
-    if (isLowerRank) {
-      direction = isLowerFile ? "SW" : "SE";
-    } else {
-      direction = isLowerFile ? "NW" : "NE";
+// const board = new Board(
+//   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/Pp2P3/2N2Q1p/1PPBBPPP/R3K2R b KQkq a3 0 1",
+// );
+
+function benchmark(): void {
+  const board = new Board();
+  for (const name of Object.keys(BENCHMARKS)) {
+    console.log(process.memoryUsage());
+    const suite = BENCHMARKS[name]!;
+    for (const depth of Object.keys(suite.depths)) {
+      board.loadFen(suite.fen);
+      if (depth === 5) continue;
+      // const board = new Board(suite.fen);
+      const results = perft(board, depth, false);
+      if (results.nodes === suite.depths[depth].expected) {
+        console.log(`${suite.fen} at depth ${depth} works`);
+      } else {
+        console.log(`${suite.fen} at depth ${depth} doesnt work`);
+      }
     }
   }
-  return walkRay(kingSquare, direction!, 1n << BigInt(attackingSquare));
 }
-for (let i = 0; i < 64; i++) {
-  for (let j = 0; j < 64; j++) {
-    RAYS[i]![j] = calcPinnedRay(toSquare(i), toSquare(j));
-  }
-}
-// printBitboard(RAYS[0]![8]!);
-// let pin = "3r4/b5q1/3B4/2N1P3/q1BK1P1r/2PPP3/8/bP1q2q1 w - - 0 1";
-let pin = "4k3/8/8/5R2/8/8/8/4K3 w - - 0 1";
-let a = "r4k1r/p1ppqpb1/bn2pQ2/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b KQ - 0 3";
-let b = "r4k1r/p1ppqpb1/bn2pQN1/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b KQ - 0 2";
-let c = "r2k3r/p1ppqNb1/bn2pQp1/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b KQ - 0 2";
-let d = "r1n1k2r/p1ppQpb1/b3p1p1/3PN3/1p2P3/2N4p/PPPBBPPP/R3K2R b KQkq - 0 2";
-// const board = new Board(pin);
-// printBitboard(generateAttacks(board));
-// //
+run();
+// profile();
+// run();
+// const board = new Board("8/2p5/3p4/KP4k1/5pP1/7r/4P3/6R1 b - g3 0 3");
+
+// // for (const move of generateLegalMoves(board)) {
+// //   console.log(decodeMove(board, move));
+// // }
+// printChessBoard(board);
 // const cache = getMoveCache(board);
-// const board = new Board(d);
-// printBitboard(queryPinnedPieces(board, board.occupancy));
-
-const board = new Board(FENS.START);
-const depth = 5;
-const timer = new Timer("Balls");
-timer.startTimer();
-const result = perft(board, depth);
-console.log(result);
-timer.stopTimer();
-Timer.timers.forEach((timer) => timer.printElapsedTime());
-// printChessBoard(board);
+// printBitboard(cache.enPassantBoard);
 // run();
-
-// for (const v in cache) {
-//   console.log("-------");
-//   console.log(v);
-//   if (typeof cache[v] === "bigint") {
-//     printBitboard(cache[v]);
-//   } else {
-//     console.log(cache[v]);
-//   }
-//   console.log("-------");
-// }
-// // // printBitboard(PINNED_RAYS[COORD_SQUARE_MAP.A1][COORD_SQUARE_MAP.A8]);
-// printChessBoard(board);
-// let pinnedPieces = queryPinnedPieces(board, board.activeOccupancy);
-// let pinnedRays = queryPinnedRays(board, board.occupancy & ~pinnedPieces);
+// const board = new Board(FENS.CHECK);
+// const cache = getMoveCache(board);
 // run();
-// printChessBoard(board);
-// printBitboard(pinnedPieces);
-// printBitboard(board.occupancy & ~pinnedPieces);
-// printBitboard(pinnedPieces);
-// printBitboard(pinnedRays);
-// printBitboard(pinnedPieces);
-// // printBitboard(board.getPawns(board.activeColour) & ~pinnedPieces);
-// printBitboard(
-//   ORTHOGONAL_TABLES.MASKS[board.getKingSquare(board.activeColour)]! &
-//     board.occupancy &
-//     ~pinnedPieces,
+// benchmark();
+
+// const move1 = createMove(
+//   COORD_SQUARE_MAP.B2,
+//   COORD_SQUARE_MAP.A1,
+//   MOVE_FLAGS.QueenPromotionCapture,
 // );
-
-// function getPinnedRay(board: Board, pinnedPiece: Square): void {
-//   printBitboard(
-//     PINNED_RAYS[board.getKingSquare(board.activeColour)]![pinnedPiece]!,
-//   );
-// }
-
-// while (pinnedPieces !== 0n) {
-//   const idx = getLSBIndex(pinnedPieces)!;
-//   getPinnedRay(board, toSquare(idx));
-//   break;
-//   // console.log(`${pieceToString(board.pieceAt(idx))} at ${squareToCoord(idx)}`);
-//   // pinnedPieces = clearLSB(pinnedPieces);
-// }
-// printBitboard(
-//   generateAttacksOnSquare(
-//     board,
-//     COORD_SQUARE_MAP.D4,
-//     getEnemyColour(board.activeColour),
-//     pinnedPieces,
-//   ),
+//
+// makeMove(board, move1);
+// const move2 = createMove(
+//   COORD_SQUARE_MAP.D1,
+//   COORD_SQUARE_MAP.C1,
+//   MOVE_FLAGS.Quiet,
 // );
 // //
-// printBitboard(queryPinnedPieces(board));
+// makeMove(board, move2);
+// console.log(board.toFen());
+// const move3 = createMove(
+//   COORD_SQUARE_MAP.A3,
+//   COORD_SQUARE_MAP.C1,
+//   MOVE_FLAGS.Quiet,
+// );
+//
+// makeMove(board, move3);
+// printChessBoard(board);
+// console.log(board.toFen());
+// const result = perft(board, 1);
+// console.log(result);
+// run();
+// benchmark();
+// const board = new Board(
+//   "r4rk1/1pp2ppp/p1np1n2/2b3B1/2B1P1b1/P1NP2q1/1PP1QP1P/R4RK1 w - - 0 12",
+// );
+// const cache = getMoveCache(board);
+// const moves = generateLegalMoves(board);
+// printChessBoard(board);
+// for (const move of moves) {
+//   console.log(decodeMove(board, move));
+// }
+// run();
+// const board = new Board(FENS.POSITION_6);
+// const result = perft(board, 5, true);
+// console.log(result);
+// const board = new Board(
+//   "rnN2k1r/pp2bppp/2p5/8/2B5/8/PPP1NnPP/RNBqK2R w KQ - 0 9",
+// );
+// printChessBoard(board);
+// const moveCache = getMoveCache(board);
+// printBitboard(moveCache.opponentAttackMask);
+
+// printChessBoard(board);
+// const moves = generateLegalMoves(board);
+// for (const move of moves) {
+//   console.log(decodeMove(board, move));
+// }
+// run();
+// benchmark();
+//
+// run();
+// const cache = getMoveCache(board);
+// const moves = generatePseudoLegalMoves(board, cache);
+// printBitboard(cache.captureMask);
+// printBitboard(cache.pushMask);
+// // printChessBoard(board);
+// console.log(generateLegalMoves(board).length);
+// printBitboard(cache.captureMask);
+//
+// console.log(board.toFen());
+// console.log(perft(board, 1));
+// const cache = getMoveCache(board);
+//
+// printBitboard(cache.captureMask);
+// console.log(board.toFen());
+// printChessBoard(board);
 
 // GeneratePseudoLegalMoves
 // activeOccupancy, enemyOccupancy, availableMovesSquares

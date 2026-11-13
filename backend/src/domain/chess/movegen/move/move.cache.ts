@@ -1,26 +1,25 @@
 import { Board } from "../../board/board.chess.js";
-import { BOARD_MASK, FULL_BOARD_MASK } from "../../board/board.constants.js";
+import { FULL_BOARD_MASK } from "../../board/board.constants.js";
 import { Bitboard, Square } from "../../board/types.chess.js";
-import { printBitboard } from "../../debug/printer.chess.js";
 import { getEnemyColour, isSlidingPiece } from "../../piece/piece.chess.js";
 import { PieceColour } from "../../piece/piece.types.js";
-import { isBitSet64 } from "../../utils/bit.utils.js";
 import {
   popCount,
   getLSBIndex,
   squareToBB,
+  OR,
+  AND,
+  NOT,
+  equals,
 } from "../../utils/bitboard.utils.js";
-import { squareToCoord } from "../../utils/coord.utils.js";
 import { toSquare } from "../../utils/square.utils.js";
 import { generateEnemyAttacks } from "../attack/attack.generators.js";
 import {
-  EnemyBitboards,
+  filterEnpassant,
   generateAttacksOnSquare,
   queryPinnedPieces,
 } from "../attack/attack.queries.js";
-import { computeRay } from "../attack/attack.rays.js";
 import { BETWEEN } from "../attack/attack.tables.js";
-import { Move } from "./move.types.js";
 
 const cacheStack: MoveCache[] = [];
 // let currentCache: MoveCache | null = null;
@@ -45,9 +44,65 @@ export interface MoveCache {
   checkRay: Bitboard;
   checkers: Bitboard;
   numCheckers: number;
+  enPassantBoard: Bitboard;
 }
 
 export let cacheCount = 0;
+// export function getMoveCache(
+//   board: Board,
+//   activeColour: PieceColour = board.activeColour,
+// ): MoveCache {
+//   cacheCount++;
+//   const activeKingSquare = board.getKingSquare(activeColour);
+//   const activeOccupancy = board.getFriendlyOccupancyFor(activeColour);
+//   const opponentOccupancy = board.getEnemyOccupancyFor(activeColour);
+//   const occupancy = OR(activeOccupancy, opponentOccupancy);
+//   const targetSquares = NOT(AND(activeOccupancy, FULL_BOARD_MASK));
+//
+//   let captureMask = opponentOccupancy;
+//   let pushMask = NOT(occupancy);
+//
+//   const a = squareToBB(activeKingSquare);
+//   const opponentAttackMask = generateEnemyAttacks(
+//     board,
+//     AND(occupancy, NOT(a)),
+//     opponentOccupancy,
+//   );
+//   const checkers = generateAttacksOnSquare(
+//     board,
+//     activeKingSquare,
+//     getEnemyColour(activeColour),
+//   );
+//   const numCheckers = popCount(checkers);
+//
+//   let pinnedPieces = queryPinnedPieces(board, occupancy);
+//   if (numCheckers === 1) {
+//     const checkerSquare = getLSBIndex(checkers)!;
+//     captureMask = checkers;
+//     if (isSlidingPiece(board.pieceAt(toSquare(checkerSquare)))) {
+//       pushMask = BETWEEN[activeKingSquare]![checkerSquare]!;
+//     } else {
+//       pushMask = [0, 0];
+//     }
+//   }
+//   // captureMask = filterEnpassant(board, captureMask);
+//
+//   return {
+//     activeKingSquare,
+//     activeOccupancy,
+//     opponentOccupancy,
+//     occupancy: OR(activeOccupancy, opponentOccupancy),
+//     opponentAttackMask,
+//     enPassant: board.enPassant,
+//     captureMask,
+//     pushMask,
+//     pinnedPieces,
+//     checkRay: [0, 0],
+//     checkers: checkers,
+//     numCheckers,
+//     enPassantBoard: filterEnpassant(board, targetSquares),
+//   };
+// }
 export function getMoveCache(
   board: Board,
   activeColour: PieceColour = board.activeColour,
@@ -56,73 +111,55 @@ export function getMoveCache(
   const activeKingSquare = board.getKingSquare(activeColour);
   const activeOccupancy = board.getFriendlyOccupancyFor(activeColour);
   const opponentOccupancy = board.getEnemyOccupancyFor(activeColour);
-  const occupancy = activeOccupancy | opponentOccupancy;
-  const targetSquares = ~activeOccupancy & FULL_BOARD_MASK;
+  const occupancy = OR(activeOccupancy, opponentOccupancy);
+  const targetSquares = NOT(AND(activeOccupancy, FULL_BOARD_MASK));
 
-  let captureMask = targetSquares;
-  let pushMask = ~occupancy;
+  let captureMask = opponentOccupancy;
+  let pushMask = NOT(occupancy);
 
+  const activeKingBoard = squareToBB(activeKingSquare);
   const opponentAttackMask = generateEnemyAttacks(
     board,
-    board.occupancy & ~squareToBB(activeKingSquare),
-    0n,
+    AND(occupancy, NOT(activeKingBoard)),
+    opponentOccupancy,
   );
-  const checkers = generateAttacksOnSquare(
-    board,
-    activeKingSquare,
-    getEnemyColour(activeColour),
-  );
-  const numCheckers = popCount(checkers);
 
-  let pinnedPieces = queryPinnedPieces(board, occupancy);
-  if (numCheckers === 1) {
-    const checkerSquare = getLSBIndex(checkers)!;
-    captureMask = checkers;
-    if (isSlidingPiece(board.pieceAt(checkerSquare))) {
-      pushMask = BETWEEN[activeKingSquare]![checkerSquare]!;
-    } else {
-      pushMask = 0n;
+  let checkers: Bitboard = [0, 0];
+  let numCheckers = 0;
+  const pinnedPieces = queryPinnedPieces(board, occupancy);
+  if (!equals(AND(opponentAttackMask, activeKingBoard), [0, 0])) {
+    checkers = generateAttacksOnSquare(
+      board,
+      activeKingSquare,
+      getEnemyColour(activeColour),
+    );
+    numCheckers = popCount(checkers);
+
+    if (numCheckers === 1) {
+      const checkerSquare = getLSBIndex(checkers)!;
+      captureMask = checkers;
+      if (isSlidingPiece(board.pieceAt(toSquare(checkerSquare)))) {
+        pushMask = BETWEEN[activeKingSquare]![checkerSquare]!;
+      } else {
+        pushMask = [0, 0];
+      }
     }
   }
-  // const opponentAttackMask = generateEnemyAttacks(board);
-  // const pinnedPieces = queryPinnedPieces(board, occupancy);
-  //
-  // let checkers = 0n;
-  //
-  // let numCheckers = 0;
-  //
-  // if (isBitSet64(opponentAttackMask, activeKingSquare)) {
-  //   checkers = generateAttacksOnSquare(
-  //     board,
-  //     board.getKingSquare(activeColour),
-  //     getEnemyColour(activeColour),
-  //   );
-  //   const numCheckers = popCount(checkers);
-  //
-  //   if (numCheckers == 1) {
-  //     captureMask = checkers;
-  //     const pieceIdx = getLSBIndex(checkers)!;
-  //     if (isSlidingPiece(board.pieceAt(pieceIdx))) {
-  //       // pushMask = computeRay(toSquare(pieceIdx), activeKingSquare);
-  //       pushMask = BETWEEN[activeKingSquare]![pieceIdx]!;
-  //     } else {
-  //       pushMask = 0n;
-  //     }
-  //   }
-  // }
+  // captureMask = filterEnpassant(board, captureMask);
 
   return {
     activeKingSquare,
     activeOccupancy,
     opponentOccupancy,
-    occupancy: activeOccupancy | opponentOccupancy,
+    occupancy: OR(activeOccupancy, opponentOccupancy),
     opponentAttackMask,
     enPassant: board.enPassant,
     captureMask,
     pushMask,
     pinnedPieces,
-    checkRay: 0n,
+    checkRay: [0, 0],
     checkers: checkers,
     numCheckers,
+    enPassantBoard: filterEnpassant(board, targetSquares),
   };
 }

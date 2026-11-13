@@ -12,10 +12,10 @@ import {
 import {
   generateOrthogonalAttackMask,
   generateDiagonalAttackMask,
-  generateKnightAttackMask,
   generateKingAttackMask,
   generateWhitePawnAttackMask,
   generateBlackPawnAttackMask,
+  generateKnightAttackMask,
 } from "./attack.mask.js";
 import { computeIndex } from "../../utils/magic.utils.js";
 import { walkRay, walkSlidingRays } from "./attack.rays.js";
@@ -114,14 +114,14 @@ export function precomputeBetweenRays(): Bitboard[][] {
   for (const from of SQUARES) {
     for (const to of SQUARES) {
       if (from === to) {
-        BETWEEN[from]![to] = 0n;
+        BETWEEN[from]![to] = [0, 0];
         continue;
       }
       const onSameFile = isOnSameFile(from, to);
       const onSameRank = isOnSameRank(from, to);
       const onSameDiagonal = isOnSameDiagonal(from, to);
       if (!onSameFile && !onSameRank && !onSameDiagonal) {
-        BETWEEN[from]![to] = 0n;
+        BETWEEN[from]![to] = [0, 0];
         continue;
       }
 

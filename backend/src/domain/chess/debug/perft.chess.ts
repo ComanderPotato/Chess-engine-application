@@ -1,10 +1,17 @@
 import { Board } from "../board/board.chess.js";
 import * as MoveChess from "../movegen/move/move.chess.js";
 import * as MoveMake from "../movegen/move/move.make.js";
-import { MOVE_FLAGS } from "../movegen/move/move.constants.js";
+import { MOVE_FLAGS, MoveFlag } from "../movegen/move/move.constants.js";
 import { generateLegalMoves } from "../movegen/move/move.generator.js";
 import { squareToCoord } from "../utils/coord.utils.js";
 import { cacheCount } from "../movegen/move/move.cache.js";
+import {
+  isCaptureFlag,
+  isCastlingFlag,
+  isEnpassantFlag,
+  isPromotionFlag,
+} from "../utils/move.utils.js";
+import { connections } from "mongoose";
 
 interface PerftInfo {
   nodes: number;
@@ -18,7 +25,17 @@ interface PerftInfo {
   checkmates: number;
 }
 
-export function perft(board: Board, depth: number): PerftInfo {
+function updatePerftInfo(info: PerftInfo, flag: MoveFlag): void {
+  info.captures += Number(flag === MOVE_FLAGS.Capture);
+  info.ep += Number(isEnpassantFlag(flag));
+  info.castles += Number(isCastlingFlag(flag));
+  info.promotions += Number(isPromotionFlag(flag));
+}
+export function perft(
+  board: Board,
+  depth: number,
+  log: boolean = true,
+): PerftInfo {
   const info: PerftInfo = {
     nodes: 0,
     captures: 0,
@@ -45,34 +62,36 @@ export function perft(board: Board, depth: number): PerftInfo {
 
       let moveCount = recurse(depth - 1);
 
-      if (depth === initialDepth) {
-        const flag = MoveChess.getFlag(move);
-        let a = "";
-        if (
-          flag === MOVE_FLAGS.BishopPromotion ||
-          flag === MOVE_FLAGS.BishopPromotionCapture
-        ) {
-          a = "b";
-        } else if (
-          flag === MOVE_FLAGS.RookPromotion ||
-          flag === MOVE_FLAGS.RookPromotionCapture
-        ) {
-          a = "r";
-        } else if (
-          flag === MOVE_FLAGS.QueenPromotion ||
-          flag === MOVE_FLAGS.QueenPromotionCapture
-        ) {
-          a = "q";
-        } else if (
-          flag === MOVE_FLAGS.KnightPromotion ||
-          flag === MOVE_FLAGS.KnightPromotionCapture
-        ) {
-          a = "n";
-        }
+      if (log) {
+        if (depth === initialDepth) {
+          const flag = MoveChess.getFlag(move);
+          let a = "";
+          if (
+            flag === MOVE_FLAGS.BishopPromotion ||
+            flag === MOVE_FLAGS.BishopPromotionCapture
+          ) {
+            a = "b";
+          } else if (
+            flag === MOVE_FLAGS.RookPromotion ||
+            flag === MOVE_FLAGS.RookPromotionCapture
+          ) {
+            a = "r";
+          } else if (
+            flag === MOVE_FLAGS.QueenPromotion ||
+            flag === MOVE_FLAGS.QueenPromotionCapture
+          ) {
+            a = "q";
+          } else if (
+            flag === MOVE_FLAGS.KnightPromotion ||
+            flag === MOVE_FLAGS.KnightPromotionCapture
+          ) {
+            a = "n";
+          }
 
-        console.log(
-          `${squareToCoord(MoveChess.getFrom(move))}${squareToCoord(MoveChess.getTo(move))}${a} with nodes: ${moveCount}`,
-        );
+          console.log(
+            `${squareToCoord(MoveChess.getFrom(move))}${squareToCoord(MoveChess.getTo(move))}${a} with nodes: ${moveCount}`,
+          );
+        }
       }
       count += moveCount;
       // count += recurse(depth - 1);

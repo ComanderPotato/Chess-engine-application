@@ -15,6 +15,7 @@ import {
   SQUARES,
 } from "@/domain/chess/board/board.constants.js";
 import * as TestAttackMask from "@/domain/chess/movegen/attack/attack.mask.js";
+import * as generateKnightAttackMask from "@/domain/chess/movegen/attack/generateKnightAttackMask.js";
 import { isBitSet64 } from "@/domain/chess/utils/bit.utils.js";
 import { describe, expect, it } from "vitest";
 
@@ -219,25 +220,33 @@ describe("attack.mask", () => {
       }
     });
   });
-  describe(TestAttackMask.generateKnightAttackMask.name, () => {
+  describe(generateKnightAttackMask.generateKnightAttackMask.name, () => {
     it("generates an attack mask for a knight on A1", () => {
-      const mask = TestAttackMask.generateKnightAttackMask(COORD_SQUARE_MAP.A1);
+      const mask = generateKnightAttackMask.generateKnightAttackMask(
+        COORD_SQUARE_MAP.A1,
+      );
       expect(isBitSet64(mask, COORD_SQUARE_MAP.B3)).toBe(true);
       expect(isBitSet64(mask, COORD_SQUARE_MAP.C2)).toBe(true);
     });
     it("generates an attack mask for a knight on H1", () => {
-      const mask = TestAttackMask.generateKnightAttackMask(COORD_SQUARE_MAP.H1);
+      const mask = generateKnightAttackMask.generateKnightAttackMask(
+        COORD_SQUARE_MAP.H1,
+      );
       expect(isBitSet64(mask, COORD_SQUARE_MAP.G3)).toBe(true);
       expect(isBitSet64(mask, COORD_SQUARE_MAP.F2)).toBe(true);
     });
     it("generates an attack mask for a knight on A8", () => {
-      const mask = TestAttackMask.generateKnightAttackMask(COORD_SQUARE_MAP.A8);
+      const mask = generateKnightAttackMask.generateKnightAttackMask(
+        COORD_SQUARE_MAP.A8,
+      );
       expect(isBitSet64(mask, COORD_SQUARE_MAP.B6)).toBe(true);
       expect(isBitSet64(mask, COORD_SQUARE_MAP.C7)).toBe(true);
       expect(mask & ~BOARD_MASK).toBe(0n);
     });
     it("generates an attack mask for a knight on H8", () => {
-      const mask = TestAttackMask.generateKnightAttackMask(COORD_SQUARE_MAP.H8);
+      const mask = generateKnightAttackMask.generateKnightAttackMask(
+        COORD_SQUARE_MAP.H8,
+      );
       expect(isBitSet64(mask, COORD_SQUARE_MAP.G6)).toBe(true);
       expect(isBitSet64(mask, COORD_SQUARE_MAP.F7)).toBe(true);
       expect(mask & ~BOARD_MASK).toBe(0n);
@@ -246,7 +255,8 @@ describe("attack.mask", () => {
       for (const square of SQUARES) {
         const bit = 1n << BigInt(square);
 
-        const actual = TestAttackMask.generateKnightAttackMask(square);
+        const actual =
+          generateKnightAttackMask.generateKnightAttackMask(square);
         const attacks =
           ((bit & NOT_AB_FILES_MASK) << 6n) |
           ((bit & NOT_GH_FILES_MASK) << 10n) |
