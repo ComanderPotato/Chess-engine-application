@@ -11,20 +11,20 @@ export const BITBOARD_SHIFTS = {
 
 export const KNIGHT_SHIFTS = {
   // North
-  N2W1: 15n,
-  N2E1: 17n,
+  N2W1: 15,
+  N2E1: 17,
 
   // East
-  N1E2: 10n,
-  S1E2: 6n,
+  N1E2: 10,
+  S1E2: 6,
 
   // South
-  S2E1: 15n,
-  S2W1: 17n,
+  S2E1: 15,
+  S2W1: 17,
 
   // West
-  N1W2: 6n,
-  S1W2: 10n,
+  N1W2: 6,
+  S1W2: 10,
 } as const;
 
 export const KING_SHIFTS = BITBOARD_SHIFTS;

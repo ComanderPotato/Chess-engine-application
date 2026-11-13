@@ -4,8 +4,8 @@ import {
   hasOrthogonalMovement,
 } from "../../piece/piece.chess.js";
 import { Piece } from "../../piece/piece.types.js";
-import { setBit64, isBitSet64 } from "../../utils/bit.utils.js";
-import { squareToBB } from "../../utils/bitboard.utils.js";
+import { setBit, isBitSet } from "../../utils/bit.utils.js";
+import { OR, squareToBB } from "../../utils/bitboard.utils.js";
 import {
   fileRankToSquare,
   isValidDirection,
@@ -41,7 +41,7 @@ export function computeRay(from: Square, to: Square): Bitboard {
     rankDiff !== 0 &&
     Math.abs(fileDiff) !== Math.abs(rankDiff)
   ) {
-    return 0n;
+    return [0, 0];
   }
 
   const fileStep = Math.sign(fileDiff);
@@ -49,12 +49,13 @@ export function computeRay(from: Square, to: Square): Bitboard {
 
   let file = fromFile + fileStep;
   let rank = fromRank + rankStep;
-  let ray = 0n;
+  let ray: Bitboard = [0, 0];
 
   while (file !== toFile || rank !== toRank) {
     // TODO: might not be correct
     // ray |= 1n << BigInt(rank * 8 + file);
-    ray |= squareToBB(fileRankToSquare(file, rank));
+    // ray |= squareToBB(fileRankToSquare(file, rank));
+    ray = OR(ray, squareToBB(fileRankToSquare(file, rank)));
     file += fileStep;
     rank += rankStep;
   }
@@ -64,45 +65,46 @@ export function computeRay(from: Square, to: Square): Bitboard {
 export function walkRay(
   square: Square,
   direction: Direction,
-  blockerMask: Bitboard = 0n,
+  blockerMask: Bitboard = [0, 0],
 ): Bitboard {
-  let mask = 0n;
+  let mask: Bitboard = [0, 0];
   while (isValidDirection(square, direction)) {
     square = (square + SQUARE_DIRECTIONS[direction]) as Square;
-    mask = setBit64(mask, square);
-    if (isBitSet64(blockerMask, square)) break;
+    mask = setBit(mask, square);
+    if (isBitSet(blockerMask, square)) break;
   }
   return mask;
 }
 export function walkOrthogonalRays(
   square: Square,
-  blockerMask: Bitboard = 0n,
+  blockerMask: Bitboard = [0, 0],
 ): Bitboard {
-  let mask = 0n;
+  let mask: Bitboard = [0, 0];
   for (const direction of ORTHOGONAL_DIRECTIONS) {
-    mask |= walkRay(square, direction, blockerMask);
+    mask = OR(mask, walkRay(square, direction, blockerMask));
   }
   return mask;
 }
 
 export function walkDiagonalRays(
   square: Square,
-  blockerMask: Bitboard = 0n,
+  blockerMask: Bitboard = [0, 0],
 ): Bitboard {
-  let mask = 0n;
+  let mask: Bitboard = [0, 0];
   for (const direction of DIAGONAL_DIRECTIONS) {
-    mask |= walkRay(square, direction, blockerMask);
+    mask = OR(mask, walkRay(square, direction, blockerMask));
   }
   return mask;
 }
 export function walkSlidingRays(
   square: Square,
   piece: Piece,
-  blockerMask: Bitboard = 0n,
+  blockerMask: Bitboard = [0, 0],
 ) {
-  let mask = 0n;
+  let mask: Bitboard = [0, 0];
   if (hasOrthogonalMovement(piece))
-    mask |= walkOrthogonalRays(square, blockerMask);
-  if (hasDiagonalMovement(piece)) mask |= walkDiagonalRays(square, blockerMask);
+    mask = OR(mask, walkOrthogonalRays(square, blockerMask));
+  if (hasDiagonalMovement(piece))
+    mask = OR(mask, walkDiagonalRays(square, blockerMask));
   return mask;
 }

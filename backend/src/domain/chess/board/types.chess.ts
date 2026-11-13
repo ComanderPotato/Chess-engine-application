@@ -1,7 +1,5 @@
 import { FILES, RANKS } from "./board.constants.js";
 
-export type Bitboard = bigint;
-
 export type ReadonlyBitboards = readonly Bitboard[];
 
 export type Bit = bigint;
@@ -20,3 +18,4 @@ export interface SideCastlingRights {
   canKingSide: boolean;
   canQueenSide: boolean;
 }
+export type Bitboard = [lo: number, hi: number];

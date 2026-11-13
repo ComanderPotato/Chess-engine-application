@@ -1,4 +1,4 @@
-import { isBitSet64, toBinary } from "../utils/bit.utils.js";
+import { isBitSet, toBinary } from "../utils/bit.utils.js";
 import { Bitboard, Square } from "../board/types.chess.js";
 import {
   BOARD_DIMENSION,
@@ -10,6 +10,15 @@ import { fileRankToSquare, toRank } from "../utils/square.utils.js";
 import { Board } from "../board/board.chess.js";
 import { pieceToString } from "../piece/piece.format.js";
 import { pieceToNotation } from "../piece/piece.notation.js";
+import {
+  AND,
+  bbToString,
+  bigintToBitboard,
+  leftShift,
+  rightShift,
+} from "../utils/bitboard.utils.js";
+import { shiftLeft, shiftRight } from "../movegen/move/move.bitboard.js";
+import { connections } from "mongoose";
 
 type lineType = "rank" | "fileLabel" | "divider";
 
@@ -34,9 +43,9 @@ export function printAttackBitboard(
     let content = "";
     for (let file = FILES.A; file <= FILES.H; file++) {
       const square = fileRankToSquare(file, rank);
-      if (isBitSet64(pieceBitboard, square)) {
+      if (isBitSet(pieceBitboard, square)) {
         content += "1";
-      } else if (isBitSet64(attackBitboard, square)) {
+      } else if (isBitSet(attackBitboard, square)) {
         content += "X";
       } else {
         content += "0";
@@ -47,18 +56,24 @@ export function printAttackBitboard(
   }
   printFileLabel(cellWidth);
 }
+const ROW_MASK: Bitboard = bigintToBitboard(0xffn);
 export function printBitboard(bitboard: Bitboard, options: IPrintOptions = {}) {
   const { cellWidth = 3, title = "", fenString = "" } = options;
 
-  const rowMask: bigint = 0xffn;
+  // const rowMask: bigint = 0xffn;
   console.log(`${title}\n`);
   printDivider(cellWidth);
-  for (let rowIdx = 7n; rowIdx >= 0n; rowIdx--) {
-    const shift = 8n * rowIdx;
-    const row = (bitboard & (rowMask << shift)) >> shift;
+  for (let rowIdx = RANKS.EIGHTH; rowIdx >= RANKS.FIRST; rowIdx--) {
+    const shift = BOARD_DIMENSION * rowIdx;
+    // const row = shiftRight(AND(bitboard, shiftLeft(ROW_MASK, shift)), shift);
+    const row = shiftRight(AND(bitboard, shiftLeft(ROW_MASK, shift)), shift);
+    // console.log(bbToString(leftShift(ROW_MASK, shift)).padStart(64, "0"));
+    // console.log(AND(bitboard, shiftLeft(ROW_MASK, shift)));
+    // console.log(bbToString(row));
+    // const row = (bitboard & (rowMask << shift)) >> shift;
     printRank(
-      row.toString(2).padStart(8, "0").split("").reverse(),
-      Number(rowIdx + 1n),
+      bbToString(row).padStart(8, "0").split("").reverse(),
+      rowIdx + 1,
       cellWidth,
     );
     printDivider(cellWidth);

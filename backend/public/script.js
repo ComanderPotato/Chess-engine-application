@@ -1,9 +1,11 @@
 import { Board } from "../dist/domain/chess/board/board.chess.js";
-import { Piece } from "../dist/domain/chess/board/piece.chess.js";
+// import { Piece } from "../dist/domain/chess/board/piece.chess.js";
 import { Visualiser } from "../dist/domain/chess/debug/visualiser.chess.js";
-
+//
 const board = new Board();
 const visualiser = new Visualiser(board);
+console.log(visualiser);
+console.log("Hello");
 
 // const bitboardsElement = document.querySelector(".bitboards");
 // const boardElement = document.querySelector(".board");
@@ -89,5 +91,5 @@ const visualiser = new Visualiser(board);
 //   }
 // }
 //
-visualiser.createBitboardElements();
-visualiser.createBoard();
+// visualiser.createBitboardElements();
+// visualiser.createBoard();

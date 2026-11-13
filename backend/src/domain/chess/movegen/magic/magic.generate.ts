@@ -1,4 +1,8 @@
-import { BOARD_SIZE, SQUARES } from "@/domain/chess/board/board.constants.js";
+import {
+  BOARD_SIZE,
+  SQUARE_TO_BIGINT,
+  SQUARES,
+} from "@/domain/chess/board/board.constants.js";
 import { Piece } from "@/domain/chess/piece/piece.types.js";
 import {
   getRelevantBlockerSquares,
@@ -17,6 +21,11 @@ import {
   PIECE_TYPE_BITS,
   PIECE_TYPES,
 } from "../../piece/piece.constants.js";
+import { randomMagic } from "../../utils/magic.utils.js";
+import { connections } from "mongoose";
+import { pieceToString } from "../../piece/piece.format.js";
+import { printBitboard } from "../../debug/printer.chess.js";
+import { bitboardToBigint } from "../../utils/bitboard.utils.js";
 
 export function composeMagicIdentifier(piece: Piece): string {
   if (hasDiagonalMovement(piece)) {
@@ -62,21 +71,24 @@ export function generateSlidingMagics(
     shifts: data.shifts,
   };
 }
-// generateSlidingMagics(PIECE_TYPES.Bishop | PIECE_PROPERTIES.Diagonal, {
-//   write: true,
-//   read: false,
-// });
-// generateSlidingMagics(PIECE_TYPES.Rook | PIECE_PROPERTIES.Orthogonal, {
-//   write: true,
-//   read: false,
-// });
+// const a = Math.floor(Math.random() * 0x100000000);
+// console.log(randomMagic());
+// console.log(SQUARE_TO_BIGINT[a]);
+generateSlidingMagics(PIECE_TYPES.Bishop | PIECE_PROPERTIES.Diagonal, {
+  write: true,
+  read: false,
+});
+generateSlidingMagics(PIECE_TYPES.Rook | PIECE_PROPERTIES.Orthogonal, {
+  write: true,
+  read: false,
+});
 
 function writeMagicData(data: MagicData): void {
   const outputDirectory = path.resolve(import.meta.dirname);
   const filePath = path.join(outputDirectory, `${data.identifier}.magic.ts`);
   const magicConstant = formatGeneratedConstant(
     `${data.identifier.toUpperCase()}_MAGICS_PRECOMPUTE`, // Maybe add function for magic.utls
-    data.magics,
+    data.magics.map((magic) => bitboardToBigint(magic)),
   );
   const shiftConstant = formatGeneratedConstant(
     `${data.identifier.toUpperCase()}_SHIFTS_PRECOMPUTE`,
