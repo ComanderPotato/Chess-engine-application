@@ -2,9 +2,9 @@ import {
   Bitboard,
   ReadonlyBitboards,
   Square,
-} from "@/domain/chess/board/types.chess.js";
-import { getEnemyColour, isWhite } from "@/domain/chess/piece/piece.chess.js";
-import { PieceColour } from "@/domain/chess/piece/piece.types.js";
+} from "../../board/types.chess.js";
+import { getEnemyColour, isWhite } from "../../piece/piece.chess.js";
+import { PieceColour } from "../../piece/piece.types.js";
 import { Board } from "../../board/board.chess.js";
 import { clearBit } from "../../utils/bit.utils.js";
 import {
@@ -137,6 +137,7 @@ function generateTableAttacks(
   while (!equals(pieceBoard, [0, 0])) {
     const square = getLSBIndex(pieceBoard)!;
     pieceBoard = clearBit(pieceBoard, square);
+
     attackMask = OR(
       attackMask,
       AND(generateTableAttack(square, table), NOT(activeOccupancy)),

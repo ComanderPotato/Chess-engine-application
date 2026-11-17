@@ -1,7 +1,6 @@
 import { Board } from "../../board/board.chess.js";
 import { Bitboard, ReadonlyBitboards } from "../../board/types.chess.js";
 import {
-  getEnemyColour,
   hasDiagonalMovement,
   hasOrthogonalMovement,
   isWhite,
@@ -17,24 +16,21 @@ import {
   equals,
   OR,
   NOT,
+  OREQ,
+  ANDEQ,
 } from "../../utils/bitboard.utils.js";
 import { computeIndex } from "../../utils/magic.utils.js";
 import { toSquare } from "../../utils/square.utils.js";
 import { Move } from "./move.types.js";
-import { PIECE_PROPERTIES, PIECE_TYPES } from "../../piece/piece.constants.js";
+import { PIECE_PROPERTIES } from "../../piece/piece.constants.js";
 import * as AttackTables from "../attack/attack.tables.js";
 import * as MoveUtils from "../../utils/move.utils.js";
 import * as MoveChess from "./move.chess.js";
-import * as MoveMake from "./move.make.js";
 import * as MoveConstants from "./move.constants.js";
-import {
-  filterPinnedPieceMovement,
-  isSquareAttacked,
-} from "../attack/attack.queries.js";
+import { filterPinnedPieceMovement } from "../attack/attack.queries.js";
 import { Timer } from "../../debug/timer.debug.js";
 import {
   BOARD_MASK,
-  FIRST_TO_LAST_RANK_BB,
   FIRST_TO_LAST_RANK_SHIFT,
   RANK_MASKS,
   RANKS,
@@ -42,11 +38,6 @@ import {
 import { shiftLeft, shiftNorth, shiftSouth } from "./move.bitboard.js";
 import { generateEnemyAttacks } from "../attack/attack.generators.js";
 import { getMoveCache, MoveCache } from "./move.cache.js";
-import { printBitboard } from "../../debug/printer.chess.js";
-import { squareToCoord } from "../../utils/coord.utils.js";
-import { walkSlidingRays } from "../attack/attack.rays.js";
-import { composeFullMoveClock } from "../../fen/fen.composer.js";
-import { decodeMove } from "./move.debug.js";
 
 // export const pseudoTimer = new Timer("Pseudo legal");
 // export const makeMoveTimer = new Timer("Make move");
@@ -132,7 +123,7 @@ export function generatePawnMoves(
 
     const forwardMoves = OR(
       singlePush,
-      AND(shiftDirection(singlePush), pawnForwardMoves),
+      ANDEQ(shiftDirection(singlePush), pawnForwardMoves),
     );
     const attackMoves = attackTable[from]!;
 
@@ -390,13 +381,14 @@ export function generatePseudoLegalMoves(
 ): Move[] {
   const moves: Move[] = [];
   const activeColour = board.activeColour;
+  const targetMask = OREQ(moveCache.pushMask, moveCache.captureMask);
   if (moveCache.numCheckers < 2) {
     generatePawnMoves(
       board,
       board.getPawns(activeColour),
       activeColour,
       moveCache.pushMask,
-      OR(moveCache.captureMask, moveCache.enPassantBoard),
+      OREQ(moveCache.captureMask, moveCache.enPassantBoard),
       moveCache.pinnedPieces,
       moveCache.checkers,
       moves,
@@ -404,7 +396,7 @@ export function generatePseudoLegalMoves(
     generateKnightMoves(
       board,
       board.getKnights(activeColour),
-      OR(moveCache.pushMask, moveCache.captureMask),
+      targetMask,
       moveCache.pinnedPieces,
       moves,
     );
@@ -412,7 +404,7 @@ export function generatePseudoLegalMoves(
       board,
       board.getBishops(activeColour),
       moveCache.occupancy,
-      OR(moveCache.pushMask, moveCache.captureMask),
+      targetMask,
       moveCache.pinnedPieces,
       moveCache.checkers,
       moves,
@@ -421,7 +413,7 @@ export function generatePseudoLegalMoves(
       board,
       board.getRooks(activeColour),
       moveCache.occupancy,
-      OR(moveCache.pushMask, moveCache.captureMask),
+      targetMask,
       moveCache.pinnedPieces,
       moveCache.checkers,
       moves,
@@ -430,7 +422,7 @@ export function generatePseudoLegalMoves(
       board,
       board.getQueens(activeColour),
       moveCache.occupancy,
-      OR(moveCache.pushMask, moveCache.captureMask),
+      targetMask,
       moveCache.pinnedPieces,
       moveCache.checkers,
       moves,

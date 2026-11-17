@@ -1,6 +1,7 @@
-import { BOARD_SIZE } from "@/domain/chess/board/board.constants.js";
-import { Bitboard } from "@/domain/chess/board/types.chess.js";
-import * as BitUtils from "@/domain/chess/utils/bit.utils.js";
+// import { BOARD_SIZE } from "../../../domain/chess/board/board.constants.js";
+import { BOARD_SIZE } from "../../board/board.constants.js";
+import { Bitboard } from "../../board/types.chess.js";
+import * as BitUtils from "../../utils/bit.utils.js";
 import * as BitboardUtils from "../../utils/bitboard.utils.js";
 import * as SquareUtils from "../../utils/square.utils.js";
 

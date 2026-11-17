@@ -1,9 +1,6 @@
-import { BOARD_SIZE } from "@/domain/chess/board/board.constants.js";
-import {
-  Bitboard,
-  ReadonlyBitboards,
-} from "@/domain/chess/board/types.chess.js";
-import { PIECE_PROPERTIES } from "@/domain/chess/piece/piece.constants.js";
+import { BOARD_SIZE } from "../../board/board.constants.js";
+import { Bitboard, ReadonlyBitboards } from "../../board/types.chess.js";
+import { PIECE_PROPERTIES } from "../../piece/piece.constants.js";
 import * as AttackPrecompute from "./attack.precompute.js";
 import {
   ORTHOGONAL_MAGICS_PRECOMPUTE,

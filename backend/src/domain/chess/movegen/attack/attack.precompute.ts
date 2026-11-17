@@ -1,10 +1,7 @@
 // On startup functions
-import { BOARD_SIZE, SQUARES } from "@/domain/chess/board/board.constants.js";
-import {
-  Bitboard,
-  ReadonlyBitboards,
-} from "@/domain/chess/board/types.chess.js";
-import { Piece } from "@/domain/chess/piece/piece.types.js";
+import { BOARD_SIZE, SQUARES } from "../../board/board.constants.js";
+import { Bitboard, ReadonlyBitboards } from "../../board/types.chess.js";
+import { Piece } from "../../piece/piece.types.js";
 import {
   getRelevantBlockerSquares,
   generateBlockerConfigs,

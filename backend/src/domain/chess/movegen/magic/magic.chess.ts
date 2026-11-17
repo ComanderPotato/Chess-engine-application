@@ -1,6 +1,6 @@
-import { Square, Bitboard } from "@/domain/chess/board/types.chess.js";
-import { Piece } from "@/domain/chess/piece/piece.types.js";
-import * as MagicUtil from "@/domain/chess/utils/magic.utils.js";
+import { Square, Bitboard } from "../../board/types.chess.js";
+import { Piece } from "../../piece/piece.types.js";
+import * as MagicUtil from "../../utils/magic.utils.js";
 import { walkSlidingRays } from "../attack/attack.rays.js";
 import { bitboardToBigint } from "../../utils/bitboard.utils.js";
 

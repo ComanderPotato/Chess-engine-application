@@ -2,7 +2,7 @@ import {
   EDGE_MASK,
   NOT_CORNER_MASK,
   NOT_EDGE_MASK,
-} from "@/domain/chess/bitboard/bitboard.masks.js";
+} from "../../bitboard/bitboard.masks.js";
 import {
   BOARD_MASK,
   FILE_MASKS,
@@ -11,19 +11,14 @@ import {
   NOT_GH_FILES_MASK,
   NOT_H_FILE_MASK,
   RANK_MASKS,
-} from "@/domain/chess/board/board.constants.js";
-import { Square, Bitboard } from "@/domain/chess/board/types.chess.js";
+} from "../../board/board.constants.js";
+import { Square, Bitboard } from "../../board/types.chess.js";
 import {
   hasOrthogonalMovement,
   hasDiagonalMovement,
-} from "@/domain/chess/piece/piece.chess.js";
-import { Piece } from "@/domain/chess/piece/piece.types.js";
-import {
-  isCorner,
-  getEdge,
-  toFile,
-  toRank,
-} from "@/domain/chess/utils/square.utils.js";
+} from "../../piece/piece.chess.js";
+import { Piece } from "../../piece/piece.types.js";
+import { isCorner, getEdge, toFile, toRank } from "../../utils/square.utils.js";
 import { walkDiagonalRays } from "./attack.rays.js";
 import {
   shiftNorthWest,

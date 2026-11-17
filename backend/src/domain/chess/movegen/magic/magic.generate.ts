@@ -2,8 +2,8 @@ import {
   BOARD_SIZE,
   SQUARE_TO_BIGINT,
   SQUARES,
-} from "@/domain/chess/board/board.constants.js";
-import { Piece } from "@/domain/chess/piece/piece.types.js";
+} from "../../board/board.constants.js";
+import { Piece } from "../../piece/piece.types.js";
 import {
   getRelevantBlockerSquares,
   generateBlockerConfigs,
