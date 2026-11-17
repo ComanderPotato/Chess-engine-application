@@ -21,42 +21,64 @@ export function bbToString([lo, hi]: Bitboard): string {
 export function createBitboard(lo: number = 0, hi: number = 0): Bitboard {
   return [lo >>> 0, hi >>> 0];
 }
-export function multiply(a: Bitboard, b: Bitboard): Bitboard {
-  const loProduct = BigInt(a[0] >>> 0) * BigInt(b[1] >>> 0);
-
-  const lo = Number(loProduct & 0xffffffffn) >>> 0;
-
-  const hi =
-    Number((loProduct >> 32n) & 0xffffffffn) +
-    Math.imul(a[0], b[1]) +
-    Math.imul(a[1], b[0]);
-
-  return [lo, hi >>> 0];
-}
 // export function multiply(a: Bitboard, b: Bitboard): Bitboard {
-//   const a0 = a[0] & 0xffff;
-//   const a1 = a[0] >>> 16;
-//   const b0 = b[0] & 0xffff;
-//   const b1 = b[0] >>> 16;
+//   const loProduct = BigInt(a[0] >>> 0) * BigInt(b[1] >>> 0);
 //
-//   const lowProduct = a0 * b0;
-//   const middle = a1 * b0 + a0 * b1 + (lowProduct >>> 16);
+//   const lo = Number(loProduct & 0xffffffffn) >>> 0;
 //
-//   const low = ((lowProduct & 0xffff) | ((middle & 0xffff) << 16)) >>> 0;
+//   const hi =
+//     Number((loProduct >> 32n) & 0xffffffffn) +
+//     Math.imul(a[0], b[1]) +
+//     Math.imul(a[1], b[0]);
 //
-//   const high = (a[1] * b[0] + a[0] * b[1] + a1 * b1 + (middle >>> 16)) >>> 0;
-//
-//   return [low, high];
+//   return [lo, hi >>> 0];
 // }
+// export function multiply(a: Bitboard, b: Bitboard): Bitboard {
+//   const loProduct = a[0] * b[0];
+//
+//   const lo = loProduct >>> 0;
+//
+//   const carry = Math.floor(loProduct / 0x100000000);
+//
+//   const hi = (carry + Math.imul(a[0], b[1]) + Math.imul(a[1], b[0])) >>> 0;
+//
+//   if (bitboardToBigint([lo, hi]) > 1n << 64n) console.log("Bad");
+//   return [lo, hi];
+// }
+export function multiply(a: Bitboard, b: Bitboard): Bitboard {
+  const a0 = a[0] & 0xffff;
+  const a1 = a[0] >>> 16;
+  const b0 = b[0] & 0xffff;
+  const b1 = b[0] >>> 16;
+
+  const lowProduct = a0 * b0;
+  const middle = a1 * b0 + a0 * b1 + (lowProduct >>> 16);
+
+  const low = ((lowProduct & 0xffff) | ((middle & 0xffff) << 16)) >>> 0;
+
+  const high = (a[1] * b[0] + a[0] * b[1] + a1 * b1 + (middle >>> 16)) >>> 0;
+
+  return [low, high];
+}
 export function equals(a: Bitboard, b: Bitboard): boolean {
   return a[0] === b[0] && a[1] === b[1];
 }
 export function AND(a: Bitboard, b: Bitboard): Bitboard {
   return [(a[0] & b[0]) >>> 0, (a[1] & b[1]) >>> 0];
 }
+export function ANDEQ(a: Bitboard, b: Bitboard): Bitboard {
+  a[0] &= b[0] >>> 0;
+  a[1] &= b[1] >>> 0;
+  return a;
+}
 
 export function OR(a: Bitboard, b: Bitboard): Bitboard {
   return [(a[0] | b[0]) >>> 0, (a[1] | b[1]) >>> 0];
+}
+export function OREQ(a: Bitboard, b: Bitboard): Bitboard {
+  a[0] |= b[0] >>> 0;
+  a[1] |= b[1] >>> 0;
+  return a;
 }
 
 export function XOR(a: Bitboard, b: Bitboard): Bitboard {
